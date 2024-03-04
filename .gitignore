@@ -1,3 +1,5 @@
+.metals/
+.vscode/
 sbt/
 sbt.zip
 target/
