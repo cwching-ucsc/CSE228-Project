@@ -1,8 +1,8 @@
 package chiselRouter
 
 object SubnetUtil {
-  def getStartAddr(ip: NetworkAddr, mask: NetworkAddr): NetworkAddr = {
+  def getStartAddr(ip: IPv4Addr, mask: IPv4Addr): IPv4Addr = {
     assert(ip.width == mask.width)
-    new NetworkAddr(ip.addr & mask.addr)
+    new IPv4Addr(ip.addr & mask.addr)
   }
 }
