@@ -69,9 +69,11 @@ class IPv4Addr(override val addr: Long) extends NetworkAddr(addr, 32) {
  * Companion object used to initialize an IPv4 address
  */
 object IPv4Addr {
+  val MAX_NUM = 4294967295L
+  val MIN_NUM = 0L
   /**
    * @constructor Use human readable format to create an IPv4Addr class instance
-   * @param v4Addr String representation of IPv4 address
+   * @param v4Addr `String` representation of IPv4 address
    * @example `IPv4Addr("1.2.4.8")`
    * @return IPv4Addr class
    */
@@ -82,7 +84,33 @@ object IPv4Addr {
       .zipWithIndex
       .map { case (n, i) => math.pow(256, i).toLong * n.toLong }
       .sum
-    assert(0L <= addrNum && addrNum <= 4294967295L)
+    assert(MIN_NUM <= addrNum && addrNum <= MAX_NUM)
+    new IPv4Addr(addrNum)
+  }
+
+  /**
+   * @constructor Use machine readable format to create an IPv4Addr class instance
+   * @param v4AddrVec `Vector[Int]` representation of IPv4 address (left to right)
+   * @example `IPv4Addr(Vector(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0))`
+   * @return IPv4Addr class
+   */
+  def apply(v4AddrVec: Vector[Int]): IPv4Addr = {
+    val addrNum = v4AddrVec
+      .reverse
+      .zipWithIndex
+      .map { case (n, i) => math.pow(2, i).toLong * n.toLong }
+      .sum
+    assert(MIN_NUM <= addrNum && addrNum <= MAX_NUM)
+    new IPv4Addr(addrNum)
+  }
+
+  /**
+   * @constructor Use machine readable format to create an IPv4Addr class instance
+   * @param addrNum `Long` representation of IPv4 address (left to right)
+   * @example `IPv4Addr(1L)`
+   * @return IPv4Addr class
+   */
+  def apply(addrNum: Long): IPv4Addr = {
     new IPv4Addr(addrNum)
   }
 }
@@ -95,6 +123,7 @@ class IPv6Addr(override val addr: Long) extends NetworkAddr(addr, 128) {
   override val binaryAddr: Vector[Int] = Vector.empty
 }
 
+// @todo Implement IPv6Addr
 object IPv6Addr {
   def apply(v6Addr: String): IPv6Addr = {
     new IPv6Addr(v6Addr.replace(":", "").toInt)

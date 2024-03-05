@@ -4,9 +4,21 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class NetworkAddrTester extends AnyFlatSpec {
   behavior of "NetworkAddr"
-  it should "be able to parse an IPv4 address" in {
+  it should "be able to parse an IPv4 address from String" in {
     val ip = IPv4Addr("1.2.4.8")
     assert(ip.toString == "1.2.4.8")
+  }
+
+  it should "be able to parse an IPv4 address from Vec[Int]" in {
+    val ip = IPv4Addr(
+      Vector(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0)
+    )
+    assert(ip.toString == "1.2.4.8")
+  }
+
+  it should "be able to parse an IPv4 address from Long" in {
+    val ip = IPv4Addr(1L)
+    assert(ip.toString == "0.0.0.1")
   }
 
   it should "be able to compare two IPv4 addresses" in {
