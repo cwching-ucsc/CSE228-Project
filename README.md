@@ -34,6 +34,9 @@ sbt test
 
 # Test IPv4SubnetUtil
 sbt "testOnly *IPv4SubnetUtil*"
+
+# Test CAMTester
+sbt "testOnly *CAMModelTester*"
 ```
 
 ## Current Status
@@ -53,7 +56,7 @@ sbt "testOnly *IPv4SubnetUtil*"
 
 ### Almost Done 🏗
 - CAM (Content-Addressable Memory) in Chisel (**Working**)
-  - `CAMModel.scala` 
+  - `CAMModel.scala`, `CAMModelTester.scala`
   - Store IP
   - Retrieve value based on IP
   - Clear memory
