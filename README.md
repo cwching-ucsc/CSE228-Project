@@ -70,5 +70,8 @@ cases. Development on a new feature will be happened in a different branch. Once
 has finished, such a branch will be merged back to `main` branch. This approach allows simultaneous
 collaboration on the project with minimizing merge conflicts.
 
+We have also enabled CI/CD for automated testing using Github Actions and deploying API documentation
+through Netlify.
+
 ## Authors
 Tongze Wang, Cheng-Wei Ching
