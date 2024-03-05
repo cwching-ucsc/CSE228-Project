@@ -1,5 +1,5 @@
-.bloop/
-.metals/
+**/.bloop/
+**/.metals/
 .vscode/
 sbt/
 sbt.zip
