@@ -3,12 +3,6 @@ package cam
 import chisel3._
 import chisel3.util._
 
-
-// bits: 0, 1, ..., 63 -> capacity = 64 bits, cache saves up to 64 bits data.
-// bits: 0, 1, ..., 31 | 32, 33, ..., 63 -> dataDepth = 2, cache stores two IPs.
-// bits: [00], 0, 1, ..., 31 | [01], 32, 33, ..., 63 -> tagWidth = 2, one bit represents the tag (or key), it can be more, depending on the rize of routing table
-
-
 case class CAMParams(capacity: Int, bitsPerIP: Int) {
 	require(capacity > bitsPerIP)
 	require(isPow2(capacity) && isPow2(bitsPerIP) && (capacity % bitsPerIP == 0))
@@ -26,9 +20,10 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 			val opCode = Input(UInt(2.W))
 			val loadData = Input(UInt((p.numOffsetBits).W))			
 		}))
-		val found = Output(Bool()) // TODO: change it to io.out.valid
+		// val found = Output(Bool()) // TODO: change it to io.out.valid
 		// val foundAddr = Output(UInt((p.numIPTag).W))
-		val resultVec = Output(Vec(p.numIPTag, Bool()))
+		val writtenIndex = Valid((UInt(p.numIPTagBits.W)))
+		val resultVec = Valid((Vec(p.numIPTag, Bool())))
 
 	})
 
@@ -37,12 +32,24 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 	val memory = Reg(Vec(p.numIPTag, UInt(p.numOffsetBits.W)))
 	val validArray = RegInit(VecInit(Seq.fill(p.numIPTag)(false.B)))
 	val writePointer = RegInit(0.U(log2Ceil(p.numIPTag).W))
-	val resultReg = RegInit(VecInit(Seq.fill(p.numIPTag)(false.B)))
+	// val resultReg = RegInit(VecInit(Seq.fill(p.numIPTag)(false.B)))
+	// TODO: to check how to use dut.io.resultVec(index).expect(value) to check the expect.
+	val resultReg = VecInit(Seq.fill(p.numIPTag)(false.B))
+	val writtenResultReg = RegInit(false.B)
+	
+	val writtenValid = RegInit(false.B)
+	val lookupValid = RegInit(false.B)
 
+	io.resultVec.valid := lookupValid
+	io.writtenIndex.valid := writtenValid
+
+	io.resultVec.bits := resultReg
+	io.writtenIndex.bits := writtenResultReg
 
 
 	val sIdle :: sCompute :: Nil = Enum(2)
  	val state = RegInit(sIdle)
+
 	
 
 	when(io.in.fire) {
@@ -59,6 +66,7 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 					memory(writePointer) := dataReg
 					validArray(writePointer) := false.B
 					writePointer := Mux(writePointer === (p.numIPTag.U - 1.U), 0.U, writePointer + 1.U)
+					writtenValid := true.B
 				} //TODO: what if the current position is not valid but the data needs to be write?
 			}
 			is(1.U) { // lookup operation
@@ -66,7 +74,9 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 					valid && (data === dataReg)
 				}
 
-				io.resultVec := lookupResults
+				resultReg := lookupResults
+				lookupValid := true.B
+				
 
 				// Initialize found flag and found address
 				// io.found := false.B
@@ -103,5 +113,7 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 			state := sCompute
      }
 	}
+
+	io.in.ready := state === sIdle
 
 }
