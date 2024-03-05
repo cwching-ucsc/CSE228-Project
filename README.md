@@ -45,14 +45,14 @@ sbt "testOnly *IPv4SubnetUtil*"
     - In binary
     - In human-readable format (a.b.c.d)
     - Comparator
-- IPv4 Subnet Tool
+- IPv4 Subnet Tool in Scala
   - `IPv4SubnetUtil.scala`, `SubnetUtil.scala` 
   - Calculate subnet address space
   - Check if an address is in a subnet
   - Check if an address is a broadcast address
 
-### Await Integration Test 🏗
-- CAM (Content-Addressable Memory) in Chisel
+### Almost Done 🏗
+- CAM (Content-Addressable Memory) in Chisel (**Working**)
   - `CAMModel.scala` 
   - Store IP
   - Retrieve value based on IP
