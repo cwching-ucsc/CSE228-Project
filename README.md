@@ -5,8 +5,8 @@
 (TCAM: Ternary Content-Addressable Memory)
 
 ## Goal
-A working IPv4 router with ARP (Address Resolution Protocol) support. It's also
-capable of routing network packets / data frames in L2 (Data Link) and L3 (Network)
+A working IPv4 router with ARP (Address Resolution Protocol) support. It's
+capable of routing data frames / network packets in L2 (Data Link) / L3 (Network)
 layers.
 
 (IPv6 support is on our wishlist)
@@ -40,12 +40,20 @@ sbt "testOnly *IPv4SubnetUtil*"
 
 ### Done ✅
 - IPv4 Addr Model in Scala
-  - Calculate subnet addresses
+  - `NetworkAddr.scala`
+  - Able to represent an IPv4 address
+    - In binary
+    - In human-readable format (a.b.c.d)
+    - Comparator
+- IPv4 Subnet Tool
+  - `IPv4SubnetUtil.scala`, `SubnetUtil.scala` 
+  - Calculate subnet address space
   - Check if an address is in a subnet
   - Check if an address is a broadcast address
 
 ### Await Integration Test 🏗
 - CAM (Content-Addressable Memory) in Chisel
+  - `CAMModel.scala` 
   - Store IP
   - Retrieve value based on IP
   - Clear memory
@@ -58,5 +66,9 @@ sbt "testOnly *IPv4SubnetUtil*"
 
 ## Development Workflow
 `main` branch is only reserved for production-ready code that can pass all the existing test
-cases. Development on a new feature will be happened in a different branch. Once the developement
-has finished, such a branch will be merged back to `main` branch.
+cases. Development on a new feature will be happened in a different branch. Once the development
+has finished, such a branch will be merged back to `main` branch. This approach allows simultaneous
+collaboration on the project with minimizing merge conflicts.
+
+## Authors
+Tongze Wang, Cheng-Wei Ching
