@@ -22,31 +22,35 @@ case class CAMParams(capacity: Int, bitsPerIP: Int) {
 
 class FIFOCAMModel(p: CAMParams) extends Module {
 	val io = IO(new Bundle {
-		val opCode = Input(UInt(2.W))
-		val loadData = Input(UInt((p.numOffsetBits).W))
+		val in = Flipped(Decoupled(new Bundle {
+			val opCode = Input(UInt(2.W))
+			val loadData = Input(UInt((p.numOffsetBits).W))			
+		}))
 		val found = Output(Bool()) // TODO: change it to io.out.valid
 		val foundAddr = Output(UInt((p.numIPTagBits).W))
 	})
 
 	val dataReg = Reg(UInt(p.numOffsetBits.W))
+	val opReg = Reg(UInt(2.W))
 	val memory = Reg(Vec(p.numIPTag, UInt(p.numOffsetBits.W)))
 	val validArray = RegInit(VecInit(Seq.fill(p.numIPTag)(false.B)))
 	val writePointer = RegInit(0.U(log2Ceil(p.numIPTag).W))
 
 
-	io.found := false.B
-	io.foundAddr := 0.U
 
 	val sIdle :: sCompute :: Nil = Enum(2)
  	val state = RegInit(sIdle)
+	
 
 	when(io.in.fire) {
-		dataReg := io.loadData
+		dataReg := io.in.bits.loadData
+		opReg := io.in.bits.opCode
 		state := sCompute
+
 	}
 
 	when(state === sCompute) {
-		switch(io.opCode) {
+		switch(opReg) {
 			is(0.U) { // write operation
 				when(!validArray(writePointer)) { //check if the current position is valid
 					memory(writePointer) := dataReg
@@ -56,16 +60,32 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 			}
 			is(1.U) { // lookup operation
 				val lookupResults = memory.zip(validArray).map { case (data, valid) =>
-					valid && (data === io.loadData)
+					valid && (data === dataReg)
 				}
-				io.found := lookupResults.reduce(_ || _)
-				io.foundAddr := Mux(io.found, lookupResults.indexWhere(_ === true.B), 0.U)
+
+				// Initialize found flag and found address
+				io.found := false.B
+				io.foundAddr := 0.U
+
+				// Manually iterate to find the index of the first match
+				val foundIndex = Wire(UInt(log2Ceil(p.numIPTag).W))
+				foundIndex := 0.U
+				(lookupResults.zipWithIndex.reverse).foreach { case (result, index) =>
+					when(result) {
+					io.found := true.B
+					foundIndex := index.U
+					}
+				}
+
+				// Update the foundAddr with the foundIndex if found
+				io.foundAddr := Mux(io.found, foundIndex, 0.U)
+
 				//TODO: what if there are duplicate tags feasible for the lookup?
 				//TODO: returning 0 is a good idea if 0 represents a tag as well?
 			}
 			is(2.U) { // delete operation
 				for (i <- 0 until p.numIPTag) {
-					when(memory(i.U) === io.loadData && validArray(i.U)) {
+					when(memory(i.U) === dataReg && validArray(i.U)) {
 						validArray(i.U) := false.B
 					}
 				}
