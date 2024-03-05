@@ -27,7 +27,9 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 			val loadData = Input(UInt((p.numOffsetBits).W))			
 		}))
 		val found = Output(Bool()) // TODO: change it to io.out.valid
-		val foundAddr = Output(UInt((p.numIPTagBits).W))
+		// val foundAddr = Output(UInt((p.numIPTag).W))
+		val resultVec = Output(Vec(p.numIPTag, Bool()))
+
 	})
 
 	val dataReg = Reg(UInt(p.numOffsetBits.W))
@@ -35,6 +37,7 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 	val memory = Reg(Vec(p.numIPTag, UInt(p.numOffsetBits.W)))
 	val validArray = RegInit(VecInit(Seq.fill(p.numIPTag)(false.B)))
 	val writePointer = RegInit(0.U(log2Ceil(p.numIPTag).W))
+	val resultReg = RegInit(VecInit(Seq.fill(p.numIPTag)(false.B)))
 
 
 
@@ -63,22 +66,24 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 					valid && (data === dataReg)
 				}
 
-				// Initialize found flag and found address
-				io.found := false.B
-				io.foundAddr := 0.U
+				io.resultVec := lookupResults
 
-				// Manually iterate to find the index of the first match
-				val foundIndex = Wire(UInt(log2Ceil(p.numIPTag).W))
-				foundIndex := 0.U
-				(lookupResults.zipWithIndex.reverse).foreach { case (result, index) =>
-					when(result) {
-					io.found := true.B
-					foundIndex := index.U
-					}
-				}
+				// Initialize found flag and found address
+				// io.found := false.B
+				// io.foundAddr := 0.U
+
+				// // Manually iterate to find the index of the first match
+				// val foundIndex = Wire(UInt(log2Ceil(p.numIPTag).W))
+				// foundIndex := 0.U
+				// (lookupResults.zipWithIndex.reverse).foreach { case (result, index) =>
+				// 	when(result) {
+				// 	io.found := true.B
+				// 	foundIndex := index.U
+				// 	}
+				// }
 
 				// Update the foundAddr with the foundIndex if found
-				io.foundAddr := Mux(io.found, foundIndex, 0.U)
+				// io.foundAddr := Mux(io.found, foundIndex, 0.U)
 
 				//TODO: what if there are duplicate tags feasible for the lookup?
 				//TODO: returning 0 is a good idea if 0 represents a tag as well?
