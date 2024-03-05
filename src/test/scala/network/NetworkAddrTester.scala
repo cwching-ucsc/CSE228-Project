@@ -17,4 +17,11 @@ class NetworkAddrTester extends AnyFlatSpec {
     assert(ip1 != ip3)
     print(ip1)
   }
+
+  it should "be able to parse two extreme IPv4 addresses" in {
+    val ip1 = IPv4Addr("0.0.0.0")
+    val ip2 = IPv4Addr("255.255.255.255")
+    assert(ip1.toString == "0.0.0.0")
+    assert(ip2.toString == "255.255.255.255")
+  }
 }

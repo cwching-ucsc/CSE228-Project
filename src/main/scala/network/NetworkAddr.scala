@@ -8,6 +8,10 @@ package network
 abstract class NetworkAddr(val addr: Long, val width: Int) {
   val binaryAddr: Vector[Int]
 
+  /**
+   * Compare two network addresses and make sure their width and address are equal.
+   * @param obj Other `NetworkAddr`
+   */
   override def equals(obj: Any): Boolean = {
     obj match {
       case o: NetworkAddr => this.width == o.width && this.addr == o.addr
@@ -78,7 +82,7 @@ object IPv4Addr {
       .zipWithIndex
       .map { case (n, i) => math.pow(256, i).toLong * n.toLong }
       .sum
-    assert(0L < addrNum && addrNum <= 4294967295L)
+    assert(0L <= addrNum && addrNum <= 4294967295L)
     new IPv4Addr(addrNum)
   }
 }
