@@ -203,7 +203,7 @@
         "platform": {
             "name": "jvm",
             "config": {
-                "home": "/home/wtongze/.jdks/temurin-17.0.10",
+                "home": "/usr/lib/jvm/java-11-openjdk-amd64",
                 "options": [
                     "-Duser.dir=/home/wtongze/Desktop/CSE228-Project/project/project"
                 ]
@@ -212,7 +212,7 @@
                 
             ],
             "runtimeConfig": {
-                "home": "/home/wtongze/.jdks/temurin-17.0.10",
+                "home": "/usr/lib/jvm/java-11-openjdk-amd64",
                 "options": [
                     "-Duser.dir=/home/wtongze/Desktop/CSE228-Project/project/project"
                 ]
