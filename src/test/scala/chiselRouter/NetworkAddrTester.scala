@@ -15,7 +15,5 @@ class NetworkAddrTester extends AnyFlatSpec {
     val ip3 = IPv4Addr("1.1.1.1")
     assert(ip1 == ip2)
     assert(ip1 != ip3)
-
-    print(ip1.binaryAddr)
   }
 }

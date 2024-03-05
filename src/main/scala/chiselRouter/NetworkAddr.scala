@@ -6,7 +6,7 @@ package chiselRouter
  * @param addr Address
  */
 abstract class NetworkAddr(val addr: Long, val width: Int) {
-  val binaryAddr: String
+  val binaryAddr: Vector[Int]
 
   override def equals(obj: Any): Boolean = {
     obj match {
@@ -35,12 +35,13 @@ class IPv4Addr(override val addr: Long) extends NetworkAddr(addr, 32) {
       .mkString(".")
   }
 
-  override val binaryAddr: String = {
+  override val binaryAddr: Vector[Int] = {
     addr.toBinaryString
       .reverse
       .padTo(32, "0")
       .reverse
-      .mkString("")
+      .map(_.toString.toInt)
+      .toVector
   }
 }
 
@@ -64,7 +65,7 @@ object IPv4Addr {
  * Class used to represent an IPv6 address (128 bits)
  */
 class IPv6Addr(override val addr: Long) extends NetworkAddr(addr, 128) {
-  override val binaryAddr: String = ""
+  override val binaryAddr: Vector[Int] = Vector.empty
 }
 
 object IPv6Addr {
