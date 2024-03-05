@@ -1,4 +1,4 @@
-package chiselRouter
+package network
 
 import org.scalatest.flatspec.AnyFlatSpec
 

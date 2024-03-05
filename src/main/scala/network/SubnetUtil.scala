@@ -1,4 +1,4 @@
-package chiselRouter
+package network
 
 object SubnetUtil {
   def getStartAddr(ip: IPv4Addr, mask: IPv4Addr): IPv4Addr = {
