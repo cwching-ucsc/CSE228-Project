@@ -325,6 +325,7 @@ dist/*
 target/
 lib_managed/
 src_managed/
+project/.bloop/*
 project/boot/
 project/plugins/project/
 
