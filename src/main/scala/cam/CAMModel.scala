@@ -80,6 +80,20 @@ class CAM(p: CAMParams) extends Module {
             io.out.bits := writeIdx
           }
         }
+
+        when (io.in.bits.cmds.read) {
+          val resultFlags = memory
+            .zipWithIndex
+            .map { case (entry, idx) => entry === io.in.bits.content && !emptyFlags(idx) }
+
+          val targetIdx = PriorityEncoder(resultFlags)
+          io.out.valid := memory(targetIdx) === io.in.bits.content && !emptyFlags(targetIdx)
+          io.out.bits := targetIdx
+        }
+
+        when (io.in.bits.cmds.delete) {
+
+        }
       }
     }
   }
