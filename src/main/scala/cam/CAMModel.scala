@@ -6,7 +6,10 @@ import chisel3.util._
 /**
  * This file contains an implementation of CAM (Content Addressable Memory)
  *
- * References: The following code are adapted from previous homeworks (CacheModel.scala and MalMulSC.scala)
+ * References: The following code are modified from previous homeworks
+ * (XORCipher.scala, Cache.scala, CacheModel.scala and MalMulSC.scala)
+ *
+ * @author Cheng-wei Ching, Tongze Wang
  */
 
 /**
@@ -18,110 +21,66 @@ import chisel3.util._
 case class CAMParams(entries: Int, width: Int) {
   require(entries > 0 && width > 0)
 
-  val numIPTag = entries
-  val numIPTagBits = log2Ceil(numIPTag)
-  val numOffsetBits = log2Ceil(width)
+  /**
+   * Width of result flag returned by CAM
+   */
+  val resultWidth: Int = log2Ceil(entries)
 }
 
-class FIFOCAMModel(p: CAMParams) extends Module {
+class CAMCmds extends Bundle {
+  val write: Bool = Input(Bool())
+  val read: Bool = Input(Bool())
+  val delete: Bool = Input(Bool())
+  val reset: Bool = Input(Bool())
+}
+
+object CAMState extends ChiselEnum {
+  val idle, writing, reading, deleting = Value
+}
+
+class CAM(p: CAMParams) extends Module {
   val io = IO(new Bundle {
     val in = Flipped(Decoupled(new Bundle {
-      val opCode = Input(UInt(2.W))
-      val loadData = Input(UInt((p.numOffsetBits).W))
+      val cmds = new CAMCmds
+      val content = UInt(p.width.W)
     }))
-    // val found = Output(Bool()) // TODO: change it to io.out.valid
-    // val foundAddr = Output(UInt((p.numIPTag).W))
-    val writtenIndex = Valid((UInt(p.numIPTagBits.W)))
-    val resultVec = Valid((Vec(p.numIPTag, Bool())))
 
+    val out = Valid(UInt(p.resultWidth.W))
+    val full = Output(Bool())
+    val state = Output(CAMState())
   })
 
-  val dataReg = Reg(UInt(p.numOffsetBits.W))
-  val opReg = Reg(UInt(2.W))
-  val memory = Reg(Vec(p.numIPTag, UInt(p.numOffsetBits.W)))
-  val validArray = RegInit(VecInit(Seq.fill(p.numIPTag)(false.B)))
-  val writePointer = RegInit(0.U(log2Ceil(p.numIPTag).W))
-  // val resultReg = RegInit(VecInit(Seq.fill(p.numIPTag)(false.B)))
-  // TODO: to check how to use dut.io.resultVec(index).expect(value) to check the expect.
-  val resultReg = VecInit(Seq.fill(p.numIPTag)(false.B))
-  val writtenResultReg = RegInit(false.B)
+  val memory = Reg(Vec(p.entries, UInt(p.width.W)))
+  val emptyFlags = RegInit(VecInit(Seq.fill(p.entries)(true.B)))
+  val usedCount = RegInit(0.U(p.resultWidth.W))
 
-  val writtenValid = RegInit(false.B)
-  val lookupValid = RegInit(false.B)
+  val state = RegInit(CAMState.idle)
 
-  io.resultVec.valid := lookupValid
-  io.writtenIndex.valid := writtenValid
+  // Set default output
+  io.state := state
+  io.out.valid := false.B
+  io.out.bits := 0.U
+  io.in.ready := false.B
+  io.full := usedCount === p.entries.U
 
-  io.resultVec.bits := resultReg
-  io.writtenIndex.bits := writtenResultReg
+  switch (state) {
+    is (CAMState.idle) {
+      // CAM is idle, ready to execute commands
+      io.in.ready := true.B
 
+      when (io.in.fire) {
+        when (io.in.bits.cmds.write) {
+          when (usedCount < p.entries.U) {
+            val writeIdx = PriorityEncoder(emptyFlags)
+            emptyFlags(writeIdx) := false.B
+            memory(writeIdx) := io.in.bits.content
+            usedCount := usedCount + 1.U
 
-  val sIdle :: sCompute :: Nil = Enum(2)
-  val state = RegInit(sIdle)
-
-
-  when(io.in.fire) {
-    dataReg := io.in.bits.loadData
-    opReg := io.in.bits.opCode
-    state := sCompute
-
-  }
-
-  when(state === sCompute) {
-    switch(opReg) {
-      is(0.U) { // write operation
-        when(!validArray(writePointer)) { //check if the current position is valid
-          memory(writePointer) := dataReg
-          validArray(writePointer) := false.B
-          writePointer := Mux(writePointer === (p.numIPTag.U - 1.U), 0.U, writePointer + 1.U)
-          writtenValid := true.B
-        } //TODO: what if the current position is not valid but the data needs to be write?
-      }
-      is(1.U) { // lookup operation
-        val lookupResults = memory.zip(validArray).map { case (data, valid) =>
-          valid && (data === dataReg)
-        }
-
-        resultReg := lookupResults
-        lookupValid := true.B
-
-
-        // Initialize found flag and found address
-        // io.found := false.B
-        // io.foundAddr := 0.U
-
-        // // Manually iterate to find the index of the first match
-        // val foundIndex = Wire(UInt(log2Ceil(p.numIPTag).W))
-        // foundIndex := 0.U
-        // (lookupResults.zipWithIndex.reverse).foreach { case (result, index) =>
-        // 	when(result) {
-        // 	io.found := true.B
-        // 	foundIndex := index.U
-        // 	}
-        // }
-
-        // Update the foundAddr with the foundIndex if found
-        // io.foundAddr := Mux(io.found, foundIndex, 0.U)
-
-        //TODO: what if there are duplicate tags feasible for the lookup?
-        //TODO: returning 0 is a good idea if 0 represents a tag as well?
-      }
-      is(2.U) { // delete operation
-        for (i <- 0 until p.numIPTag) {
-          when(memory(i.U) === dataReg && validArray(i.U)) {
-            validArray(i.U) := false.B
+            io.out.valid := true.B
+            io.out.bits := writeIdx
           }
         }
       }
     }
-  }.elsewhen(state === sIdle) {
-    when(io.in.valid) {
-      io.in.ready := true.B
-      dataReg := io.in.bits.loadData
-      state := sCompute
-    }
   }
-
-  io.in.ready := state === sIdle
-
 }

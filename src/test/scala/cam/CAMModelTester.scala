@@ -1,51 +1,86 @@
 package cam
 
-
 import chisel3._
+import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import chisel3.util.log2Ceil
-
-// case class CAMParams(capacity: Int, bitsPerIP: Int) {
-// 	require(capacity > bitsPerIP)
-// 	require(isPow2(capacity) && isPow2(bitsPerIP) && (capacity % bitsPerIP == 0))
-
-// 	val numIPTag = capacity / bitsPerIP
-// 	val numIPTagBits = log2Ceil(numIPTag)
-// 	val numOffsetBits = log2Ceil(bitsPerIP)
-// }
 
 class CAMModelTester extends AnyFlatSpec with ChiselScalatestTester {
-    def doCAMModelTest(cap: Int, IP: Int): Unit = {
-      val p = CAMParams(cap, IP)
-      test(new FIFOCAMModel(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
-        
-        
-        dut.io.in.valid.poke(true.B)
-        dut.io.in.ready.expect(true.B)
+  // 3 * 32 bit entries
+  val p = CAMParams(3, 32)
 
-        dut.io.in.bits.loadData.poke(log2Ceil(100).U)
-        dut.io.writtenIndex.valid.expect(false.B)
-        dut.io.in.bits.opCode.poke(0.U)
+  def outputCheck(dut: CAM): Unit = {
+    dut.io.in.ready.expect(true.B)
+    dut.io.full.expect(false.B)
+    dut.io.out.valid.expect(true.B)
+  }
 
-        dut.clock.step()
-        dut.io.in.ready.expect(false.B)
+  def buildWriteCmd(): CAMCmds = {
+    new CAMCmds().Lit(
+      _.write -> true.B,
+      _.read -> false.B,
+      _.delete -> false.B,
+      _.reset -> false.B)
+  }
 
-        dut.clock.step()
-        dut.io.writtenIndex.valid.expect(true.B)
-
-        // val expectedValues = Seq(false.B, false.B, false.B, false.B)
-        // expectedValues.zipWithIndex.foreach { case (value, index) =>
-        //   dut.io.resultVec(index).expect(value)
-        // }
-      }
+  behavior of "CAM"
+  it should "ready to take cmds on start-up" in {
+    test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.ready.expect(true.B)
     }
+  }
 
-    behavior of "Add IP into memory"
-    it should "add an IP into memory" in {
-      // val p = CAMParams(128, 32)
-      // val m = CacheModel(p)()
-      // doCAMModelTest()
-      doCAMModelTest(128, 32)
+  it should "able to write 1 entry into memory" in {
+    test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.valid.poke(true.B)
+      dut.io.in.bits.cmds.poke(buildWriteCmd())
+      dut.io.in.bits.content.poke(1.U)
+      outputCheck(dut)
+      dut.io.out.bits.expect(0.U)
     }
+  }
+
+  it should "able to write 2 entries into different slots" in {
+    test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.valid.poke(true.B)
+      dut.io.in.bits.cmds.poke(buildWriteCmd())
+      dut.io.in.bits.content.poke(10.U)
+
+      outputCheck(dut)
+      dut.io.out.bits.expect(0.U)
+
+      dut.clock.step()
+
+      dut.io.in.bits.content.poke(20.U)
+
+      outputCheck(dut)
+      dut.io.out.bits.expect(1.U)
+    }
+  }
+
+  it should "able to write 3 entries into different slots and report full" in {
+    test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.valid.poke(true.B)
+      dut.io.in.bits.cmds.poke(buildWriteCmd())
+
+      dut.io.in.bits.content.poke(10.U)
+      outputCheck(dut)
+      dut.io.out.bits.expect(0.U)
+
+      dut.clock.step()
+
+      dut.io.in.bits.content.poke(20.U)
+      outputCheck(dut)
+      dut.io.out.bits.expect(1.U)
+
+      dut.clock.step()
+
+      dut.io.in.bits.content.poke(30.U)
+      outputCheck(dut)
+      dut.io.out.bits.expect(2.U)
+
+      dut.clock.step()
+      dut.io.full.expect(true.B)
+    }
+  }
 }
