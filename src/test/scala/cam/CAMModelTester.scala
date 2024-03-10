@@ -20,7 +20,8 @@ class CAMModelTester extends AnyFlatSpec with ChiselScalatestTester {
       val p = CAMParams(cap, IP)
       test(new FIFOCAMModel(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         
-        
+        // === Write ip = 100 into memory ===
+
         dut.io.in.valid.poke(true.B)
         dut.io.in.ready.expect(true.B)
 
@@ -33,19 +34,45 @@ class CAMModelTester extends AnyFlatSpec with ChiselScalatestTester {
 
         dut.clock.step()
         dut.io.writtenIndex.valid.expect(true.B)
+        dut.io.writtenIndex.bits.expect(0.U)
 
-        // val expectedValues = Seq(false.B, false.B, false.B, false.B)
-        // expectedValues.zipWithIndex.foreach { case (value, index) =>
-        //   dut.io.resultVec(index).expect(value)
-        // }
+        // === Write ip = 10 into memory ===
+
+        dut.io.in.valid.poke(true.B)
+        dut.io.in.ready.expect(true.B)
+
+        dut.io.in.bits.loadData.poke(log2Ceil(10).U)
+        dut.io.in.bits.opCode.poke(0.U)
+
+        dut.clock.step()
+        dut.io.in.ready.expect(false.B)
+
+        dut.clock.step()
+        dut.io.writtenIndex.valid.expect(true.B)
+        dut.io.writtenIndex.bits.expect(1.U)
+
+        // === Lookup ip = 10 in memory ===
+
+        dut.io.in.valid.poke(true.B)
+        dut.io.in.ready.expect(true.B)
+
+        dut.io.in.bits.loadData.poke(log2Ceil(10).U)
+        dut.io.in.bits.opCode.poke(1.U)
+
+        dut.clock.step()
+        dut.io.in.ready.expect(false.B)
+
+        dut.clock.step()
+        dut.io.lookupFound.bits.expect(true.B)
+        dut.io.lookupFound.valid.expect(true.B)
+        dut.io.lookupResult.valid.expect(true.B)
+        dut.io.lookupResult.bits.expect(1.U)
+
       }
     }
 
-    behavior of "Add IP into memory"
+    behavior of "Add two IPs: 10, 100 into memory"
     it should "add an IP into memory" in {
-      // val p = CAMParams(128, 32)
-      // val m = CacheModel(p)()
-      // doCAMModelTest()
       doCAMModelTest(128, 32)
     }
 }
