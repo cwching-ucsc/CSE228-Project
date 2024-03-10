@@ -72,7 +72,7 @@ object IPv4Addr {
   val MAX_NUM = 4294967295L
   val MIN_NUM = 0L
   /**
-   * @constructor Use human readable format to create an IPv4Addr class instance
+   * Use human readable format to create an IPv4Addr class instance
    * @param v4Addr `String` representation of IPv4 address
    * @example `IPv4Addr("1.2.4.8")`
    * @return IPv4Addr class
@@ -89,7 +89,7 @@ object IPv4Addr {
   }
 
   /**
-   * @constructor Use machine readable format to create an IPv4Addr class instance
+   * Use machine readable format (binary) to create an IPv4Addr class instance
    * @param v4AddrVec `Vector[Int]` representation of IPv4 address (left to right)
    * @example `IPv4Addr(Vector(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0))`
    * @return IPv4Addr class
@@ -105,7 +105,7 @@ object IPv4Addr {
   }
 
   /**
-   * @constructor Use machine readable format to create an IPv4Addr class instance
+   * Use machine readable format (number) to create an IPv4Addr class instance
    * @param addrNum `Long` representation of IPv4 address (left to right)
    * @example `IPv4Addr(1L)`
    * @return IPv4Addr class
