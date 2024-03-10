@@ -34,10 +34,6 @@ class CAMCmds extends Bundle {
   val reset: Bool = Input(Bool())
 }
 
-object CAMState extends ChiselEnum {
-  val idle, writing, reading, deleting = Value
-}
-
 class CAM(p: CAMParams) extends Module {
   val io = IO(new Bundle {
     val in = Flipped(Valid(new Bundle {
