@@ -63,14 +63,18 @@ class CAM(p: CAMParams) extends Module {
   io.in.ready := false.B
   io.full := usedCount === p.entries.U
 
-  switch (state) {
-    is (CAMState.idle) {
+  switch(state) {
+    is(CAMState.idle) {
       // CAM is idle, ready to execute commands
       io.in.ready := true.B
 
-      when (io.in.fire) {
-        when (io.in.bits.cmds.write) {
-          when (usedCount < p.entries.U) {
+      def checkHelper(idx: UInt): Bool = {
+        memory(idx) === io.in.bits.content && !emptyFlags(idx)
+      }
+
+      when(io.in.fire) {
+        when(io.in.bits.cmds.write) {
+          when(usedCount < p.entries.U) {
             val writeIdx = PriorityEncoder(emptyFlags)
             emptyFlags(writeIdx) := false.B
             memory(writeIdx) := io.in.bits.content
@@ -81,17 +85,15 @@ class CAM(p: CAMParams) extends Module {
           }
         }
 
-        when (io.in.bits.cmds.read) {
-          val resultFlags = memory
-            .zipWithIndex
-            .map { case (entry, idx) => entry === io.in.bits.content && !emptyFlags(idx) }
-
+        when(io.in.bits.cmds.read) {
+          val resultFlags = (0 until p.entries)
+            .map { i => checkHelper(i.U) }
           val targetIdx = PriorityEncoder(resultFlags)
-          io.out.valid := memory(targetIdx) === io.in.bits.content && !emptyFlags(targetIdx)
+          io.out.valid := checkHelper(targetIdx)
           io.out.bits := targetIdx
         }
 
-        when (io.in.bits.cmds.delete) {
+        when(io.in.bits.cmds.delete) {
 
         }
       }
