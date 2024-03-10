@@ -9,7 +9,7 @@ import chisel3.util._
  * References: The following code are modified from previous homeworks
  * (XORCipher.scala, Cache.scala, CacheModel.scala and MalMulSC.scala)
  *
- * @author Cheng-wei Ching, Tongze Wang
+ * @author Tongze Wang, Cheng-wei Ching
  */
 
 /**
@@ -40,63 +40,65 @@ object CAMState extends ChiselEnum {
 
 class CAM(p: CAMParams) extends Module {
   val io = IO(new Bundle {
-    val in = Flipped(Decoupled(new Bundle {
+    val in = Flipped(Valid(new Bundle {
       val cmds = new CAMCmds
       val content = UInt(p.width.W)
     }))
 
     val out = Valid(UInt(p.resultWidth.W))
     val full = Output(Bool())
-    val state = Output(CAMState())
   })
 
   val memory = Reg(Vec(p.entries, UInt(p.width.W)))
   val emptyFlags = RegInit(VecInit(Seq.fill(p.entries)(true.B)))
   val usedCount = RegInit(0.U(p.resultWidth.W))
 
-  val state = RegInit(CAMState.idle)
-
   // Set default output
-  io.state := state
   io.out.valid := false.B
   io.out.bits := 0.U
-  io.in.ready := false.B
   io.full := usedCount === p.entries.U
 
-  switch(state) {
-    is(CAMState.idle) {
-      // CAM is idle, ready to execute commands
-      io.in.ready := true.B
+  def validHelper(idx: UInt): Bool = {
+    memory(idx) === io.in.bits.content && !emptyFlags(idx)
+  }
 
-      def checkHelper(idx: UInt): Bool = {
-        memory(idx) === io.in.bits.content && !emptyFlags(idx)
+  def findMatchIdx: UInt = {
+    val resultFlags = (0 until p.entries)
+      .map { i => validHelper(i.U) }
+    PriorityEncoder(resultFlags)
+  }
+
+  when(io.in.fire) {
+    when(io.in.bits.cmds.write) {
+      when(usedCount < p.entries.U) {
+        val writeIdx = PriorityEncoder(emptyFlags)
+        emptyFlags(writeIdx) := false.B
+        memory(writeIdx) := io.in.bits.content
+        usedCount := usedCount + 1.U
+
+        io.out.valid := true.B
+        io.out.bits := writeIdx
       }
+    }
 
-      when(io.in.fire) {
-        when(io.in.bits.cmds.write) {
-          when(usedCount < p.entries.U) {
-            val writeIdx = PriorityEncoder(emptyFlags)
-            emptyFlags(writeIdx) := false.B
-            memory(writeIdx) := io.in.bits.content
-            usedCount := usedCount + 1.U
+    when(io.in.bits.cmds.read || io.in.bits.cmds.delete) {
+      val targetIdx = findMatchIdx
+      io.out.valid := validHelper(targetIdx)
+      io.out.bits := targetIdx
 
-            io.out.valid := true.B
-            io.out.bits := writeIdx
-          }
-        }
-
-        when(io.in.bits.cmds.read) {
-          val resultFlags = (0 until p.entries)
-            .map { i => checkHelper(i.U) }
-          val targetIdx = PriorityEncoder(resultFlags)
-          io.out.valid := checkHelper(targetIdx)
-          io.out.bits := targetIdx
-        }
-
-        when(io.in.bits.cmds.delete) {
-
-        }
+      when(io.in.bits.cmds.delete && io.out.valid) {
+        memory(targetIdx) := 0.U
+        emptyFlags(targetIdx) := true.B
+        usedCount := usedCount - 1.U
       }
+    }
+
+    when(io.in.bits.cmds.reset) {
+      memory.foreach { i => i := 0.U }
+      emptyFlags.foreach { i => i := true.B }
+      usedCount := 0.U
+      io.out.valid := true.B
+      io.out.bits := (p.entries - 1).U
     }
   }
 }
