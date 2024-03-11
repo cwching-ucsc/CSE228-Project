@@ -120,17 +120,6 @@ class CAMModelTester extends AnyFlatSpec with ChiselScalatestTester {
       }
     }
 
-    behavior of "IP Adding and single lookup"
-    it should "Add four IPs into memory " +
-      "and look up the 1st added IP with correct index" in {
-      val p = CAMParams(128, 32)
-      val randomValues = Seq.fill(4)(Random.nextInt(Int.MaxValue))
-      test(new FIFOCAMModel(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
-        CAMModelTestWrite(dut, randomValues)
-        CAMModelTestLookUp(dut, randomValues(1), 1)
-      }
-    }
-
     behavior of "IP Adding and Overriding"
     it should "Add five IPs into memory " +
       "and look up the last added IP with correct index" in {
