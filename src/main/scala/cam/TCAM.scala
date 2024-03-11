@@ -48,8 +48,28 @@ class TCAM(p: CAMParams) extends Module {
 
   def findMatchIdx: UInt = {
     val resultFlags = (0 until p.entries)
-      .map { i => validHelper(i.U) }
-    PriorityEncoder(resultFlags)
+      .map { i => (validHelper(i.U), PopCount(masks(i))) }
+
+    /**
+     * Find index from resultFlags that match entry with minimum ternary bits
+     */
+    def minPriorityEncoder(idx: Int, currMinIdx: Int, count: UInt): UInt = {
+      def matchHelper: UInt = {
+        Mux(
+          resultFlags(idx)._2 < count,
+          minPriorityEncoder(idx + 1, idx, resultFlags(idx)._2),
+          minPriorityEncoder(idx + 1, currMinIdx, count)
+        )
+      }
+
+      if (idx < p.entries) {
+        Mux(resultFlags(idx)._1, matchHelper, minPriorityEncoder(idx + 1, currMinIdx, count))
+      } else {
+        currMinIdx.U
+      }
+    }
+
+    minPriorityEncoder(0, p.entries - 1, p.width.U)
   }
 
   when(io.in.fire) {
