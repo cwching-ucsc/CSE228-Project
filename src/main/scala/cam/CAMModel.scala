@@ -2,14 +2,15 @@ package cam
 
 import chisel3._
 import chisel3.util._
+import dataclass.data
 
 case class CAMParams(capacity: Int, bitsPerIP: Int) {
 	require(capacity > bitsPerIP)
 	require(isPow2(capacity) && isPow2(bitsPerIP) && (capacity % bitsPerIP == 0))
 
 	val numIPTag = capacity / bitsPerIP
-	val numIPTagBits = log2Ceil(numIPTag)
-	val numOffsetBits = log2Ceil(bitsPerIP)
+	val numIPTagBits = numIPTag
+	val numOffsetBits = bitsPerIP
 }
 
 // Refereces: code change from previous homework (CacheModel.scala and MalMulSC.scala)
@@ -33,7 +34,7 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 	val opReg = Reg(UInt(2.W))
 	val memory = Reg(Vec(p.numIPTag, UInt(p.numOffsetBits.W)))
 	val validArray = RegInit(VecInit(Seq.fill(p.numIPTag)(false.B)))
-	val writePointer = RegInit(0.U(log2Ceil(p.numIPTag).W))
+	val tagCounter = Counter(p.numIPTag)
 	// TODO: to check how to use dut.io.resultVec(index).expect(value) to check the expect.
 	val lookupReg = Reg(UInt(p.numIPTagBits.W))
 	val lookupBoolReg = RegInit(false.B)
@@ -68,6 +69,8 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 	switch(state) {
 		is(sIdle) {
 			writtenValid := false.B
+			lookupValid := false.B
+			lookupBoolValid := false.B
 			io.in.ready := true.B
 			when(io.in.fire) {
 				dataReg := io.in.bits.loadData
@@ -78,12 +81,12 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 		is(sCompute) {
 			switch(opReg) {
 				is(0.U) { // write operation
-					when(!validArray(writePointer)) {
+					when(!validArray(tagCounter.value)) {
 						writtenValid := true.B
-						memory(writePointer) := dataReg
-						writtenResultReg := writePointer
-						validArray(writePointer) := false.B
-						writePointer := Mux(writePointer === (p.numIPTag.U - 1.U), 0.U, writePointer + 1.U)					
+						memory(tagCounter.value) := dataReg
+						validArray(tagCounter.value) := false.B
+						writtenResultReg := tagCounter.value
+						tagCounter.inc()
 						state := sIdle
 					}
 				}
