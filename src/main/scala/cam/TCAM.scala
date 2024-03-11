@@ -17,7 +17,7 @@ class TCAM(p: CAMParams) extends Module {
     val in = Flipped(Valid(new Bundle {
       val cmds = new CAMCmds
       val content = UInt(p.width.W)
-      val ternaryMask = UInt(p.width.W)
+      val mask = UInt(p.width.W)
     }))
 
     val out = Valid(UInt(p.resultWidth.W))
@@ -25,6 +25,7 @@ class TCAM(p: CAMParams) extends Module {
   })
 
   val memory = Reg(Vec(p.entries, UInt(p.width.W)))
+  val masks = Reg(Vec(p.entries, UInt(p.width.W)))
   val emptyFlags = RegInit(VecInit(Seq.fill(p.entries)(true.B)))
   val usedCount = RegInit(0.U(p.resultWidth.W))
 
@@ -33,8 +34,16 @@ class TCAM(p: CAMParams) extends Module {
   io.out.bits := 0.U
   io.full := usedCount === p.entries.U
 
+  def bitCheckHelper(content: Bool, mask: Bool, target: Bool): Bool = {
+    Mux(mask, content === target || !content === target, content === target)
+  }
+
+  def checkBits(content: UInt, mask: UInt, target: UInt): UInt = {
+    PopCount((0 until p.width).map { i => bitCheckHelper(content(i), mask(i), target(i)) })
+  }
+
   def validHelper(idx: UInt): Bool = {
-    memory(idx) === io.in.bits.content && !emptyFlags(idx)
+    checkBits(memory(idx), masks(idx), io.in.bits.content) === p.width.U && !emptyFlags(idx)
   }
 
   def findMatchIdx: UInt = {
@@ -49,6 +58,7 @@ class TCAM(p: CAMParams) extends Module {
         val writeIdx = PriorityEncoder(emptyFlags)
         emptyFlags(writeIdx) := false.B
         memory(writeIdx) := io.in.bits.content
+        masks(writeIdx) := 0.U(p.width.W)
         usedCount := usedCount + 1.U
 
         io.out.valid := true.B

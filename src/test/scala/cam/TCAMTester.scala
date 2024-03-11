@@ -46,7 +46,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
       _.reset -> true.B)
   }
 
-  behavior of "CAM"
+  behavior of "TCAM"
   it should "able to write 1 entry into memory" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
       dut.io.in.valid.poke(true.B)
