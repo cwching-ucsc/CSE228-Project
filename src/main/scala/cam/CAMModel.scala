@@ -102,11 +102,9 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 					}
 				}
 				is(2.U) { // delete operation
-					for (i <- 0 until p.numIPTag) {
-						when(memory(i.U) === dataReg && validArray(i.U)) {
-							validArray(i.U) := false.B
-						}
-					}
+					memory(tagCounter.value) := dataReg
+					validArray(tagCounter.value) := true.B
+					state := sIdle
 				}
 			}
 		}
