@@ -58,7 +58,7 @@ class TCAM(p: CAMParams) extends Module {
         val writeIdx = PriorityEncoder(emptyFlags)
         emptyFlags(writeIdx) := false.B
         memory(writeIdx) := io.in.bits.content
-        masks(writeIdx) := 0.U(p.width.W)
+        masks(writeIdx) := io.in.bits.mask
         usedCount := usedCount + 1.U
 
         io.out.valid := true.B
@@ -73,6 +73,7 @@ class TCAM(p: CAMParams) extends Module {
 
       when(io.in.bits.cmds.delete && io.out.valid) {
         memory(targetIdx) := 0.U
+        masks(targetIdx) := 0.U
         emptyFlags(targetIdx) := true.B
         usedCount := usedCount - 1.U
       }
@@ -80,6 +81,7 @@ class TCAM(p: CAMParams) extends Module {
 
     when(io.in.bits.cmds.reset) {
       memory.foreach { i => i := 0.U }
+      masks.foreach { i => i := 0.U }
       emptyFlags.foreach { i => i := true.B }
       usedCount := 0.U
       io.out.valid := true.B
