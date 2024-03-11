@@ -255,4 +255,28 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.out.bits.expect(0.U)
     }
   }
+
+  it should "choose first one if multiple matches" in {
+    test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.valid.poke(true.B)
+      dut.io.in.bits.cmds.poke(buildWriteCmd())
+      dut.io.in.bits.content.poke(1.U)
+      outputCheck(dut)
+      dut.io.out.bits.expect(0.U)
+
+      dut.clock.step()
+
+      dut.io.in.bits.cmds.poke(buildWriteCmd())
+      dut.io.in.bits.content.poke(1.U)
+      outputCheck(dut)
+      dut.io.out.bits.expect(1.U)
+
+      dut.clock.step()
+
+      dut.io.in.bits.cmds.poke(buildReadCmd())
+      dut.io.in.bits.content.poke(1.U)
+      dut.io.out.valid.expect(true.B)
+      dut.io.out.bits.expect(0.U)
+    }
+  }
 }

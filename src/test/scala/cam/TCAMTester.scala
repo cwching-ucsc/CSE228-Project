@@ -432,7 +432,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
-  it should "choose first one if multiple matches with same ternary bit lengths" in {
+  it should "choose first one if multiple matches (same ternary bit lengths)" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
@@ -453,6 +453,32 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
       dut.io.in.bits.cmds.poke(buildReadCmd())
       dut.io.in.bits.content.poke(0x0.U) // 0000
+      dut.io.out.valid.expect(true.B)
+      dut.io.out.bits.expect(0.U)
+    }
+  }
+
+  it should "choose first one if multiple matches (no ternary bits)" in {
+    test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.valid.poke(true.B)
+      dut.io.in.bits.cmds.poke(buildWriteCmd())
+      dut.io.in.bits.content.poke(0x1.U) // 0001
+      dut.io.in.bits.mask.poke(0x0.U) // 0000
+      outputCheck(dut)
+      dut.io.out.bits.expect(0.U)
+
+      dut.clock.step()
+
+      dut.io.in.bits.cmds.poke(buildWriteCmd())
+      dut.io.in.bits.content.poke(0x1.U) // 0001
+      dut.io.in.bits.mask.poke(0x0.U) // 0000
+      outputCheck(dut)
+      dut.io.out.bits.expect(1.U)
+
+      dut.clock.step()
+
+      dut.io.in.bits.cmds.poke(buildReadCmd())
+      dut.io.in.bits.content.poke(0x1.U) // 0001
       dut.io.out.valid.expect(true.B)
       dut.io.out.bits.expect(0.U)
     }
