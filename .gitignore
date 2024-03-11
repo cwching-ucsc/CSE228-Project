@@ -325,7 +325,11 @@ dist/*
 target/
 lib_managed/
 src_managed/
+<<<<<<< HEAD
 project/.bloop
+=======
+project/.bloop/*
+>>>>>>> feat_cam_test
 project/boot/
 project/plugins/project/
 
