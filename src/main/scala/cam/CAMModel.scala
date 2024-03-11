@@ -65,56 +65,49 @@ class FIFOCAMModel(p: CAMParams) extends Module {
 		state := sCompute
 	}
 
-	when(state === sCompute) {
-		switch(opReg) {
-			is(0.U) { // write operation
-				when(!validArray(writePointer)) { //check if the current position is valid
-					memory(writePointer) := dataReg
-					writtenResultReg := writePointer
-					validArray(writePointer) := false.B
-					writePointer := Mux(writePointer === (p.numIPTag.U - 1.U), 0.U, writePointer + 1.U)
-					writtenValid := true.B
-					state := sIdle
-					
-				} //TODO: what if the current position is not valid but the data needs to be write?
+	switch(state) {
+		is(sIdle) {
+			writtenValid := false.B
+			io.in.ready := true.B
+			when(io.in.fire) {
+				dataReg := io.in.bits.loadData
+				opReg := io.in.bits.opCode				
+				state := sCompute
 			}
-			is(1.U) { // lookup operation
-				// val lookupResults = memory.zip(validArray).map { case (data, valid) =>
-				// 	valid && (data === dataReg)
-				// }
-
-				(memory.zipWithIndex).foreach { case (result, index) =>
-					when(result === dataReg) {
-						lookupValid := true.B
-						lookupBoolValid := true.B
-						lookupBoolReg := true.B
-						lookupReg := index.U
+		}
+		is(sCompute) {
+			switch(opReg) {
+				is(0.U) { // write operation
+					when(!validArray(writePointer)) {
+						writtenValid := true.B
+						memory(writePointer) := dataReg
+						writtenResultReg := writePointer
+						validArray(writePointer) := false.B
+						writePointer := Mux(writePointer === (p.numIPTag.U - 1.U), 0.U, writePointer + 1.U)					
 						state := sIdle
-						// lock
 					}
 				}
-				
-
-				//TODO: what if there are duplicate tags feasible for the lookup?
-				//TODO: returning 0 is a good idea if 0 represents a tag as well?
-			}
-			is(2.U) { // delete operation
-				for (i <- 0 until p.numIPTag) {
-					when(memory(i.U) === dataReg && validArray(i.U)) {
-						validArray(i.U) := false.B
+				is(1.U) { // lookup operation
+					(memory.zipWithIndex).foreach { case (result, index) =>
+						when(result === dataReg) {
+							lookupValid := true.B
+							lookupBoolValid := true.B
+							lookupBoolReg := true.B
+							lookupReg := index.U
+							state := sIdle
+						}
+					}
+				}
+				is(2.U) { // delete operation
+					for (i <- 0 until p.numIPTag) {
+						when(memory(i.U) === dataReg && validArray(i.U)) {
+							validArray(i.U) := false.B
+						}
 					}
 				}
 			}
 		}
-	} .elsewhen (state === sIdle) {
-		io.in.ready := true.B
-		when(io.in.fire) {
-			dataReg := io.in.bits.loadData
-			opReg := io.in.bits.opCode
-			state := sCompute
-     }
 	}
-
 	io.in.ready := state === sIdle
 
 }
