@@ -3,11 +3,11 @@ package network
 /**
  * Base class used to represent a network address
  *
- * @param addr      Address parts in `Seq[T]`
+ * @param addr      Address parts in `Seq[Short]`
  * @param width     Width of whole address
  * @param separator Separator between address parts
  */
-abstract class NetworkAddr[T](val addr: Seq[T], val width: Int, val separator: String) {
+abstract class NetworkAddr(private val addr: Seq[Short], val width: Int, val separator: String) {
   /**
    * Compare two network addresses and make sure their width and address are equal.
    *
@@ -15,7 +15,7 @@ abstract class NetworkAddr[T](val addr: Seq[T], val width: Int, val separator: S
    */
   override def equals(obj: Any): Boolean = {
     obj match {
-      case o: NetworkAddr[T] => this.width == o.width && this.addr == o.addr
+      case o: NetworkAddr => this.width == o.width && this.addr == o.addr
       case _ => false
     }
   }
@@ -25,9 +25,9 @@ abstract class NetworkAddr[T](val addr: Seq[T], val width: Int, val separator: S
       .map { i =>
         var max = 0
         val t = i.toString.toInt
-        i match {
-          case _: Byte => max = Byte.MaxValue.toInt
-          case _: Short => max = Short.MaxValue.toInt
+        width match {
+          case 32 => max = Byte.MaxValue.toInt
+          case 128 => max = Short.MaxValue.toInt
         }
         if (t < 0) {
           (-t + max).toString

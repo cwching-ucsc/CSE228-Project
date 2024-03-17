@@ -3,7 +3,7 @@ package network
 /**
  * Class used to represent an IPv4 address (32 bits)
  */
-class IPv4Addr(override val addr: Seq[Byte]) extends NetworkAddr(addr, 32, ".") {
+class IPv4Addr(val addr: Seq[Byte]) extends NetworkAddr(addr.map(_.toShort), 32, ".") {
   /**
    * Convert internal addr representation using human readable format
    *
@@ -20,7 +20,7 @@ class IPv4Addr(override val addr: Seq[Byte]) extends NetworkAddr(addr, 32, ".") 
 /**
  * Companion object used to initialize an IPv4 address
  */
-object IPv4Addr extends TNetworkAddr[Byte, IPv4Addr] {
+object IPv4Addr extends TNetworkAddr[IPv4Addr] {
   val MAX_NUM = 255
   val MIN_NUM = 0
 
