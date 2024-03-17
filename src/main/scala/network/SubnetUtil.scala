@@ -1,6 +1,6 @@
 package network
 
-trait SubnetUtil[T <: NetworkAddr] {
+trait SubnetUtil[T, U <: NetworkAddr[U]] {
   /**
    * Get the start address of the subnet
    * @param ip `NetworkAddr` IP
