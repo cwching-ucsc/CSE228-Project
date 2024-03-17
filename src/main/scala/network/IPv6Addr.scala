@@ -33,7 +33,7 @@ class IPv6Addr(override val addr: Seq[Short]) extends NetworkAddr(addr, 128, ":"
 /**
  * Companion object used to initialize an IPv4 address
  */
-object IPv6Addr {
+object IPv6Addr extends TNetworkAddr[Short, IPv6Addr] {
   /**
    * 2 ** 32 - 1
    */

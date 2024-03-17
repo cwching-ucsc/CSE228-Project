@@ -20,29 +20,30 @@ class IPv4Addr(override val addr: Seq[Byte]) extends NetworkAddr(addr, 32, ".") 
 /**
  * Companion object used to initialize an IPv4 address
  */
-object IPv4Addr {
+object IPv4Addr extends TNetworkAddr[Byte, IPv4Addr] {
   val MAX_NUM = 255
   val MIN_NUM = 0
 
   /**
    * Use human readable format to create an IPv4Addr class instance
    *
-   * @param v4Addr `String` representation of IPv4 address
+   * @param addr `String` representation of IPv4 address
    * @example `IPv4Addr("1.2.4.8")`
    * @return IPv4Addr class
    */
-  def apply(v4Addr: String): IPv4Addr = {
-    val addr = v4Addr
-      .split('.')
-      .map(_.toInt)
-      .map { i =>
-        assert(MIN_NUM <= i && i <= MAX_NUM)
-        if (i <= Byte.MaxValue.toInt) {
-          i.toByte
-        } else {
-          (-(i - Byte.MaxValue.toInt)).toByte
+  def apply(addr: String): IPv4Addr = {
+    new IPv4Addr(
+      addr
+        .split('.')
+        .map(_.toInt)
+        .map { i =>
+          assert(MIN_NUM <= i && i <= MAX_NUM)
+          if (i <= Byte.MaxValue.toInt) {
+            i.toByte
+          } else {
+            (-(i - Byte.MaxValue.toInt)).toByte
+          }
         }
-      }
-    new IPv4Addr(addr)
+    )
   }
 }

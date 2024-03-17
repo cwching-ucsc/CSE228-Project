@@ -1,6 +1,6 @@
 //package network
 //
-//object IPv4SubnetUtil extends SubnetUtil[IPv4Addr] {
+//object IPv4SubnetUtil extends SubnetUtil[Byte, IPv4Addr] {
 //  override def getStartAddr(ip: IPv4Addr, mask: IPv4Addr): IPv4Addr = {
 //    assert(ip.width == mask.width)
 //    IPv4Addr(ip.addr & mask.addr)
