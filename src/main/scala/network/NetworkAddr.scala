@@ -37,4 +37,35 @@ abstract class NetworkAddr(private val addr: Seq[Short], val width: Int, val sep
       }
       .mkString(separator)
   }
+
+  def toBigInt: BigInt = {
+    addr
+      .map { i =>
+        var max = 0
+        val t = i.toString.toInt
+        width match {
+          case 32 => max = Byte.MaxValue.toInt
+          case 128 => max = Short.MaxValue.toInt
+        }
+        if (t < 0) {
+          BigInt(-t + max)
+        } else {
+          BigInt(t)
+        }
+      }
+      .reverse
+      .zipWithIndex
+      .map { case (n, i) =>
+        val multiplier = width match {
+          case 32 => BigInt(Byte.MinValue.toInt * -2)
+          case 128 => BigInt(Short.MinValue.toInt * -2)
+        }
+        var base = BigInt(1)
+        (0 until i).foreach { _ =>
+          base = base * multiplier
+        }
+        n * base
+      }
+      .sum
+  }
 }

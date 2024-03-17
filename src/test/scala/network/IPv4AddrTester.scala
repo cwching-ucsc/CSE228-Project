@@ -28,4 +28,31 @@ class IPv4AddrTester extends AnyFlatSpec {
     assert(ip1.toString == "0.0.0.0")
     assert(ip2.toString == "255.255.255.255")
   }
+
+  it should "be able to parse an IPv4 address from BigInt" in {
+    val ip = IPv4Addr(BigInt(258))
+    assert(ip.toString == "0.0.1.2")
+  }
+
+  it should "be able to parse an IPv4 address from BigInt when stored as negative" in {
+    val ip = IPv4Addr(BigInt(1, Array(192.toByte, 168.toByte, 0.toByte, 1.toByte)))
+    assert(ip.toString == "192.168.0.1")
+  }
+
+  it should "be able to parse two extreme IPv4 addresses from BigInt" in {
+    val ip1 = IPv4Addr(BigInt(1, Array.fill(4)(0.toByte)))
+    val ip2 = IPv4Addr(BigInt(1, Array.fill(4)(255.toByte)))
+    assert(ip1.toString == "0.0.0.0")
+    assert(ip2.toString == "255.255.255.255")
+  }
+
+  it should "be able to return correct BigInt from an IPv4 address" in {
+    val ip = IPv4Addr("0.0.1.2")
+    assert(ip.toBigInt == BigInt(258))
+  }
+
+  it should "be able to return correct BigInt from an IPv4 address when stored as negative" in {
+    val ip = IPv4Addr("192.168.0.1")
+    assert(ip.toBigInt == BigInt(1, Array(192.toByte, 168.toByte, 0.toByte, 1.toByte)))
+  }
 }

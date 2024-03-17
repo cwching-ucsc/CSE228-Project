@@ -62,4 +62,6 @@ object IPv6Addr extends TNetworkAddr[IPv6Addr] {
       }
     new IPv6Addr(addr)
   }
+
+  override def apply(number: BigInt): IPv6Addr = ???
 }

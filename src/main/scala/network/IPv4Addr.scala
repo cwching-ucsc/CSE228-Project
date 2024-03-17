@@ -24,6 +24,14 @@ object IPv4Addr extends TNetworkAddr[IPv4Addr] {
   val MAX_NUM = 255
   val MIN_NUM = 0
 
+  private def unsignedHelper(i: Int): Byte = {
+    if (i <= Byte.MaxValue.toInt) {
+      i.toByte
+    } else {
+      (-(i - Byte.MaxValue.toInt)).toByte
+    }
+  }
+
   /**
    * Use human readable format to create an IPv4Addr class instance
    *
@@ -38,12 +46,33 @@ object IPv4Addr extends TNetworkAddr[IPv4Addr] {
         .map(_.toInt)
         .map { i =>
           assert(MIN_NUM <= i && i <= MAX_NUM)
-          if (i <= Byte.MaxValue.toInt) {
-            i.toByte
-          } else {
-            (-(i - Byte.MaxValue.toInt)).toByte
-          }
+          unsignedHelper(i)
         }
     )
+  }
+
+  /**
+   * Use BigInt to create an IPv4Addr class instance
+   *
+   * @param number `BigInt` representation of IPv4 address
+   * @example {{{
+   *            IPv4Addr(BigInt(258)).toString
+   *            > 0.0.1.2
+   * }}}
+   * @return IPv4Addr class
+   */
+  override def apply(number: BigInt): IPv4Addr = {
+    assert(MIN_NUM <= number && number <= BigInt(1, Array.fill(4)(255.toByte)))
+    val addr = number
+      .toString(2)
+      .reverse
+      .padTo(32, '0')
+      .reverse
+      .grouped(8)
+      .map { g =>
+        unsignedHelper(java.lang.Integer.parseInt(g, 2))
+      }
+      .toSeq
+    new IPv4Addr(addr)
   }
 }
