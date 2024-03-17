@@ -40,6 +40,14 @@ object IPv6Addr extends TNetworkAddr[IPv6Addr] {
   val MAX_NUM = 4294967295L
   val MIN_NUM = 0L
 
+  private def unsignedHelper(i: Int): Short = {
+    if (i <= Short.MaxValue.toInt) {
+      i.toShort
+    } else {
+      (-(i - Short.MaxValue.toInt)).toShort
+    }
+  }
+
   /**
    * Use human readable format to create an IPv6Addr class instance
    *
@@ -63,5 +71,28 @@ object IPv6Addr extends TNetworkAddr[IPv6Addr] {
     new IPv6Addr(addr)
   }
 
-  override def apply(number: BigInt): IPv6Addr = ???
+  /**
+   * Use BigInt to create an IPv6Addr class instance
+   *
+   * @param number `BigInt` representation of IPv6 address
+   * @example {{{
+   *            IPv6Addr(BigInt(1)).toString
+   *            > 0000:0000:0000:0000:0000:0000:0000:0001
+   * }}}
+   * @return IPv6Addr class
+   */
+  override def apply(number: BigInt): IPv6Addr = {
+    assert(MIN_NUM <= number && number <= BigInt(1, Array.fill(16)(255.toByte)))
+    val addr = number
+      .toString(2)
+      .reverse
+      .padTo(128, '0')
+      .reverse
+      .grouped(16)
+      .map { g =>
+        unsignedHelper(java.lang.Integer.parseInt(g, 2))
+      }
+      .toSeq
+    new IPv6Addr(addr)
+  }
 }

@@ -28,4 +28,31 @@ class IPv6AddrTester extends AnyFlatSpec {
     assert(ip1.toString == "0000:0000:0000:0000:0000:0000:0000:0000")
     assert(ip2.toString == "FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF")
   }
+
+  it should "be able to parse an IPv6 address from BigInt" in {
+    val ip = IPv6Addr(BigInt(1))
+    assert(ip.toString == "0000:0000:0000:0000:0000:0000:0000:0001")
+  }
+
+  it should "be able to parse an IPv6 address from BigInt when stored as negative" in {
+    val ip = IPv6Addr(BigInt(0xffff))
+    assert(ip.toString == "0000:0000:0000:0000:0000:0000:0000:FFFF")
+  }
+
+  it should "be able to parse two extreme IPv6 addresses from BigInt" in {
+    val ip1 = IPv6Addr(BigInt(1, Array.fill(16)(0.toByte)))
+    val ip2 = IPv6Addr(BigInt(1, Array.fill(16)(255.toByte)))
+    assert(ip1.toString == "0000:0000:0000:0000:0000:0000:0000:0000")
+    assert(ip2.toString == "FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF")
+  }
+
+  it should "be able to return correct BigInt from an IPv6 address" in {
+    val ip = IPv6Addr("0000:0000:0000:0000:0000:0000:0000:0002")
+    assert(ip.toBigInt == BigInt(2))
+  }
+
+  it should "be able to return correct BigInt from an IPv4 address when stored as negative" in {
+    val ip = IPv6Addr("0000:0000:0000:0000:0000:0000:0000:FFFF")
+    assert(ip.toBigInt == BigInt(0xffff))
+  }
 }
