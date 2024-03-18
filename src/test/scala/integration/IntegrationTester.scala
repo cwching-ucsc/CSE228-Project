@@ -24,13 +24,13 @@ import network.{IPv4Addr, IPv4SubnetUtil}
  * - ARP (Address Resolution Protocol) Cache in Node A is empty when test as a switch, otherwise
  *   populated when test as a router
  *
- * Name     IP          MAC
+ * Name     IP          MAC               (Port)
  * Router   172.0.0.5   DB:FE:EB:73:37:1D (WAN1)
  * Router   110.0.0.6   CD:7D:16:A6:9B:66 (WAN2)
  * Switch   192.0.0.1   EF:0B:BD:5E:F4:AA (LAN) (Router)
- * Node A   192.0.0.2   6A:47:8B:32:7B:C8
- * Node B   192.0.0.3   26:C5:6D:A8:D4:CE
- * Node C   192.0.0.4   A2:2C:CF:4E:D0:AB
+ * Node A   192.0.0.2   6A:47:8B:32:7B:C8 (LAN0)
+ * Node B   192.0.0.3   26:C5:6D:A8:D4:CE (LAN1)
+ * Node C   192.0.0.4   A2:2C:CF:4E:D0:AB (LAN2)
  *
  * Routing table:
  * Port / Index   Content / Target IP
@@ -43,7 +43,7 @@ import network.{IPv4Addr, IPv4SubnetUtil}
  * - https://www.youtube.com/watch?v=AzXys5kxpAM
  */
 class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
-  val camParams = CAMParams(4, 32) // MAC lookup table
+  val camParams = CAMParams(4, 48) // MAC lookup table
   val tcamParams = CAMParams(3, 32) // routing table
 
   def buildWriteCmd(): CAMCmds = {
@@ -108,7 +108,7 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
 
       /**
        * [Test 1]
-       * Node A wants to send a message to 1.2.4.8
+       * Node A wants to send a packet to 1.2.4.8
        * Assume ARP cache in Node A contains MAC address of Router (LAN)
        */
       tcam.io.in.bits.cmds.poke(buildReadCmd())
@@ -116,7 +116,7 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
       tcam.io.out.valid.expect(true.B)
 
       /**
-       * Assert router should route this message to port 1
+       * Assert router should route this packet to port 1
        */
       tcam.io.out.bits.expect(1.U)
       assert(!IPv4SubnetUtil.isInSubnet(IPv4Addr("1.2.4.8"), IPv4Addr("172.0.0.0"), IPv4Addr("255.255.0.0")))
@@ -126,7 +126,7 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
 
       /**
        * [Test 2]
-       * Node B wants to send a message to 172.0.1.3
+       * Node B wants to send a packet to 172.0.1.3
        * Assume ARP cache in Node B contains MAC address of Router (LAN)
        */
       tcam.io.in.bits.cmds.poke(buildReadCmd())
@@ -134,7 +134,7 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
       tcam.io.out.valid.expect(true.B)
 
       /**
-       * Assert router should route this message to port 0
+       * Assert router should route this packet to port 0
        */
       tcam.io.out.bits.expect(0.U)
       assert(IPv4SubnetUtil.isInSubnet(IPv4Addr("172.0.1.3"), IPv4Addr("172.0.0.0"), IPv4Addr("255.255.0.0")))
@@ -143,7 +143,7 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
 
       /**
        * [Test 3]
-       * Node C wants to send a message to 192.0.0.2
+       * Node C wants to send a packet to 192.0.0.2
        * Assume ARP cache in Node C contains MAC address of Router (LAN)
        */
       tcam.io.in.bits.cmds.poke(buildReadCmd())
@@ -151,10 +151,114 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
       tcam.io.out.valid.expect(true.B)
 
       /**
-       * Assert router should route this message to port 2
+       * Assert router should route this packet to port 2
        */
       tcam.io.out.bits.expect(2.U)
       assert(IPv4SubnetUtil.isInSubnet(IPv4Addr("192.0.0.2"), IPv4Addr("192.0.0.0"), IPv4Addr("255.255.255.0")))
     }
   }
+
+  it should "be able to work as a switch" in {
+    test(new CAM(camParams)) { cam =>
+      /**
+       * Node A wants to send a dataframe to Node C
+       * Assume ARP cache in Node A is empty
+       *
+       * The destination of this dataframe is a broadcast MAC address (ARP)
+       * since Node A doesn't know Node C's MAC address
+       * (Node A only knows Node C's IP address)
+       */
+      val frame1 = DataFrame(0x6A478B327BC8L, 0xFFFFFFFFFFFFL)
+
+      /**
+       * [Test 1]
+       * Switch receives frame1, stores Node A's MAC and send the dataframe to all other switch ports
+       * Node A is connect to LAN0 in the switch
+       */
+      cam.io.in.valid.poke(true.B)
+      cam.io.in.bits.index.valid.poke(true.B)
+      cam.io.in.bits.index.bits.poke(0.U) // Port 0
+      cam.io.in.bits.cmds.poke(buildWriteCmd())
+      cam.io.in.bits.content.poke(frame1.fromMAC.U)
+      cam.io.out.valid.expect(true.B)
+      cam.io.out.bits.expect(0.U)
+
+      cam.clock.step()
+
+      /**
+       * Only Node C respond to Node A's ARP request
+       * Node C want to send a dataframe to Node A
+       */
+      val frame2 = DataFrame(0xA22CCF4ED0ABL, 0x6A478B327BC8L)
+
+      /**
+       * [Test 2]
+       * Switch receives frame2, stores Node C's MAC
+       * Node C is connect to LAN2 in the switch
+       */
+      cam.io.in.bits.index.bits.poke(2.U) // Port 2
+      cam.io.in.bits.cmds.poke(buildWriteCmd())
+      cam.io.in.bits.content.poke(frame2.fromMAC.U)
+      cam.io.out.valid.expect(true.B)
+      cam.io.out.bits.expect(2.U)
+
+      cam.clock.step()
+
+      /**
+       * [Test 3]
+       * Switch then find the port number of Node A in CAM and forward the dataframe to it
+       */
+      cam.io.in.bits.cmds.poke(buildReadCmd())
+      cam.io.in.bits.content.poke(frame2.toMAC.U)
+      cam.io.out.valid.expect(true.B)
+      cam.io.out.bits.expect(0.U) // Port 0
+
+      cam.clock.step()
+
+      /**
+       * Node B wants to send a dataframe to Node C
+       * Assume ARP cache in Node B already contains Node C's MAC address
+       */
+      val frame3 = DataFrame(0x26C56DA8D4CEL, 0xA22CCF4ED0ABL)
+
+      /**
+       * [Test 4]
+       * Switch receives frame3, stores Node B's MAC
+       * Node B is connect to LAN1 in the switch
+       */
+      cam.io.in.bits.index.bits.poke(1.U) // Port 1
+      cam.io.in.bits.cmds.poke(buildWriteCmd())
+      cam.io.in.bits.content.poke(frame3.fromMAC.U)
+      cam.io.out.valid.expect(true.B)
+      cam.io.out.bits.expect(1.U)
+
+      cam.clock.step()
+
+      /**
+       * [Test 5]
+       * Switch then find the port number of Node C in CAM and forward the dataframe to it
+       */
+      cam.io.in.bits.cmds.poke(buildReadCmd())
+      cam.io.in.bits.content.poke(frame3.toMAC.U)
+      cam.io.out.valid.expect(true.B)
+      cam.io.out.bits.expect(2.U) // Port 2
+
+      /**
+       * Node C wants to send a dataframe to Node B
+       * Assume ARP cache in Node C already contains Node B's MAC address
+       */
+      val frame4 = DataFrame(0xA22CCF4ED0ABL, 0x26C56DA8D4CEL)
+
+      /**
+       * [Test 6]
+       * Switch find the port number of Node B in CAM and forward the dataframe to it
+       */
+      cam.io.in.bits.cmds.poke(buildReadCmd())
+      cam.io.in.bits.content.poke(frame4.toMAC.U)
+      cam.io.out.valid.expect(true.B)
+      cam.io.out.bits.expect(1.U) // Port 1
+    }
+  }
 }
+
+case class DataFrame(fromMAC: Long, toMAC: Long)
