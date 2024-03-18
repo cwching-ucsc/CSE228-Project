@@ -1,13 +1,11 @@
 package integration
 
-import chisel3._
-import chiseltest._
-import org.scalatest.flatspec.AnyFlatSpec
 import cam.{CAM, CAMCmds, CAMParams, TCAM}
+import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chiseltest.{ChiselScalatestTester, testableBool}
-import network.{IPv4Addr, IPv4SubnetUtil, NetworkAddr}
-import org.scalatest.tags.Network
+import chiseltest._
+import network.{IPv4Addr, IPv4SubnetUtil, IPv6Addr, IPv6SubnetUtil, NetworkAddr}
+import org.scalatest.flatspec.AnyFlatSpec
 
 /**
  * Switches are L2 devices (i.e. only look at MAC addresses)
@@ -33,11 +31,23 @@ import org.scalatest.tags.Network
  * Node B   192.0.0.3   26:C5:6D:A8:D4:CE (LAN1)
  * Node C   192.0.0.4   A2:2C:CF:4E:D0:AB (LAN2)
  *
- * Routing table:
- * Port / Index   Content / Target IP
- * 0 (WAN1)       172.000.XXX.XXX (172.0.0.0/16)
- * 1 (WAN2)       XXX.XXX.XXX.XXX (0.0.0.0/0) (default route)
- * 2 (LAN)        192.000.000.XXX (192.0.0.0/24)
+ * Routing table for IPv4 (TCAM):
+ * Port / Index   Content / Target IP (CIDR)
+ * 0 (WAN1)       172.000.XXX.XXX (/16)
+ * 1 (WAN2)       XXX.XXX.XXX.XXX (/0) (default route)
+ * 2 (LAN)        192.000.000.XXX (/24)
+ *
+ * Routing table for IPv6 (TCAM):
+ * Port / Index   Content / Target IP (CIDR)
+ * 0 (WAN1)       2041:0000:B40F:0000:0000:0000:AAAA:00XX (/120)
+ * 1 (WAN2)       XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX (/0) (default route)
+ * 2 (LAN)        FC00:0000:0000:0000:0000:0000:0000:XXXX (/112)
+ *
+ * MAC Lookup Table (CAM) (when populated):
+ * Port / Index   Content / MAC Address
+ * 0 (LAN0)       6A:47:8B:32:7B:C8
+ * 1 (LAN1)       26:C5:6D:A8:D4:CE
+ * 2 (LAN2)       A2:2C:CF:4E:D0:AB
  *
  * Reference:
  * - https://www.youtube.com/watch?v=AhOU2eOpmX0
@@ -45,7 +55,8 @@ import org.scalatest.tags.Network
  */
 class IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
   val camParams = CAMParams(4, 48) // MAC lookup table
-  val tcamParams = CAMParams(3, 32) // routing table
+  val tcamParamsIPv4 = CAMParams(3, 32) // Routing table for IPv4
+  val tcamParamsIPv6 = CAMParams(3, 128) // Routing table for IPv6
 
   def buildWriteCmd(): CAMCmds = {
     new CAMCmds().Lit(
@@ -63,6 +74,13 @@ class IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
       _.reset -> false.B)
   }
 
+  /**
+   * Helper function to generate IPv4Addr in Chisel format
+   *
+   * @param addr IPv4 address in `String`
+   * @param mask Flag on whether perform mask correction
+   *             (TCAM ternary bit use 1 to represent X while IPv4 use 0)
+   */
   def IPv4(addr: String, mask: Boolean = false): UInt = {
     if (mask) {
       (IPv4Addr("255.255.255.255").toBigInt - IPv4Addr(addr).toBigInt).U
@@ -71,9 +89,24 @@ class IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
+  /**
+   * Helper function to generate IPv6Addr in Chisel format
+   *
+   * @param addr IPv6 address in `String`
+   * @param mask Flag on whether perform mask correction
+   *             (TCAM ternary bit use 1 to represent X while IPv6 use 0)
+   */
+  def IPv6(addr: String, mask: Boolean = false): UInt = {
+    if (mask) {
+      (IPv6Addr("FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF").toBigInt - IPv6Addr(addr).toBigInt).U
+    } else {
+      IPv6Addr(addr).toBigInt.U
+    }
+  }
+
   behavior of "IntegrationTester"
   it should "be able to work as a IPv4 router (Level 3)" in {
-    test(new TCAM(tcamParams)) { tcam =>
+    test(new TCAM(tcamParamsIPv4)) { tcam =>
 
       /**
        * Load routing table into TCAM using preferred index mode
@@ -159,6 +192,110 @@ class IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
        */
       tcam.io.out.bits.expect(2.U)
       assert(IPv4SubnetUtil.isInSubnet(p3.to, IPv4Addr("192.0.0.0"), IPv4Addr("255.255.255.0")))
+    }
+  }
+
+  it should "be able to work as a IPv6 router (Level 3)" in {
+    test(new TCAM(tcamParamsIPv6)) { tcam =>
+      val sub0 = Subnet(
+        "2041:0000:B40F:0000:0000:0000:AAAA:0000",
+        "FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FF00"
+      )
+
+      val sub1 = Subnet(
+        "0000:0000:0000:0000:0000:0000:0000:0000",
+        "0000:0000:0000:0000:0000:0000:0000:0000"
+      )
+
+      val sub2 = Subnet(
+        "FC00:0000:0000:0000:0000:0000:0000:0000",
+        "FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:0000"
+      )
+
+      /**
+       * Load routing table into TCAM using preferred index mode
+       * as the index of the entry stored in TCAM correspond
+       * to the port number in the router
+       */
+      tcam.io.in.valid.poke(true.B)
+      tcam.io.in.bits.cmds.poke(buildWriteCmd())
+      tcam.io.in.bits.index.valid.poke(true.B)
+      tcam.io.in.bits.index.bits.poke(0.U) // Port 0
+      tcam.io.in.bits.content.poke(IPv6(sub0.ip))
+      tcam.io.in.bits.mask.poke(IPv6(sub0.mask, mask = true))
+      tcam.io.out.valid.expect(true.B)
+      tcam.io.out.bits.expect(0.U)
+
+      tcam.clock.step()
+
+      tcam.io.in.bits.index.bits.poke(1.U) // Port 1
+      tcam.io.in.bits.content.poke(IPv6(sub1.ip))
+      tcam.io.in.bits.mask.poke(IPv6(sub1.mask, mask = true))
+      tcam.io.out.valid.expect(true.B)
+      tcam.io.out.bits.expect(1.U)
+
+      tcam.clock.step()
+
+      tcam.io.in.bits.index.bits.poke(2.U) // Port 2
+      tcam.io.in.bits.content.poke(IPv6(sub2.ip))
+      tcam.io.in.bits.mask.poke(IPv6(sub2.mask, mask = true))
+      tcam.io.out.valid.expect(true.B)
+      tcam.io.out.bits.expect(2.U)
+
+      tcam.clock.step()
+
+      /**
+       * [Test 1]
+       * Node A wants to send a packet to 2001:0000:B40F:0000:0000:0000:AAAA:AAAA
+       * Assume ARP cache in Node A contains MAC address of Router (LAN)
+       */
+      val p1 = Packet(IPv6Addr("2001:0000:B40F:0000:0000:0000:AAAA:AAAA"))
+      tcam.io.in.bits.cmds.poke(buildReadCmd())
+      tcam.io.in.bits.content.poke(p1.toIP)
+      tcam.io.out.valid.expect(true.B)
+
+      /**
+       * Assert router should route this packet to port 1
+       */
+      tcam.io.out.bits.expect(1.U)
+      assert(!IPv6SubnetUtil.isInSubnet(p1.to, IPv6Addr(sub0.ip), IPv6Addr(sub0.mask)))
+      assert(!IPv6SubnetUtil.isInSubnet(p1.to, IPv6Addr(sub2.ip), IPv6Addr(sub2.mask)))
+
+      tcam.clock.step()
+
+      /**
+       * [Test 2]
+       * Node B wants to send a packet to 2041:0000:B40F:0000:0000:0000:AAAA:00CD
+       * Assume ARP cache in Node B contains MAC address of Router (LAN)
+       */
+      val p2 = Packet(IPv6Addr("2041:0000:B40F:0000:0000:0000:AAAA:00CD"))
+      tcam.io.in.bits.cmds.poke(buildReadCmd())
+      tcam.io.in.bits.content.poke(p2.toIP)
+      tcam.io.out.valid.expect(true.B)
+
+      /**
+       * Assert router should route this packet to port 0
+       */
+      tcam.io.out.bits.expect(0.U)
+      assert(IPv6SubnetUtil.isInSubnet(p2.to, IPv6Addr(sub0.ip), IPv6Addr(sub0.mask)))
+
+      tcam.clock.step()
+
+      /**
+       * [Test 3]
+       * Node C wants to send a packet to FC00:0000:0000:0000:0000:0000:0000:0002
+       * Assume ARP cache in Node C contains MAC address of Router (LAN)
+       */
+      val p3 = Packet(IPv6Addr("FC00:0000:0000:0000:0000:0000:0000:0002"))
+      tcam.io.in.bits.cmds.poke(buildReadCmd())
+      tcam.io.in.bits.content.poke(p3.toIP)
+      tcam.io.out.valid.expect(true.B)
+
+      /**
+       * Assert router should route this packet to port 2
+       */
+      tcam.io.out.bits.expect(2.U)
+      assert(IPv6SubnetUtil.isInSubnet(p3.to, IPv6Addr(sub2.ip), IPv6Addr(sub2.mask)))
     }
   }
 
@@ -265,6 +402,14 @@ class IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 }
+
+/**
+ * Class used to represent a Subnet
+ *
+ * @param ip   IP in `String`
+ * @param mask Netmask in `String`
+ */
+case class Subnet(ip: String, mask: String)
 
 /**
  * Class used to represent a Packet in Level 3
