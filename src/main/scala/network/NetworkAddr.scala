@@ -20,6 +20,9 @@ abstract class NetworkAddr(private val addr: Seq[Short], val width: Int, val sep
     }
   }
 
+  /**
+   * Convert address to string based on its width and separator
+   */
   override def toString: String = {
     addr
       .map { i =>
@@ -38,6 +41,9 @@ abstract class NetworkAddr(private val addr: Seq[Short], val width: Int, val sep
       .mkString(separator)
   }
 
+  /**
+   * Convert address to BigInt based on its width
+   */
   def toBigInt: BigInt = {
     addr
       .map { i =>

@@ -35,10 +35,10 @@ class IPv6Addr(val addr: Seq[Short]) extends NetworkAddr(addr, 128, ":") {
  */
 object IPv6Addr extends TNetworkAddr[IPv6Addr] {
   /**
-   * 2 ** 32 - 1
+   * 2 ** 16 - 1
    */
-  val MAX_NUM = 4294967295L
-  val MIN_NUM = 0L
+  val MAX_NUM = 65535
+  val MIN_NUM = 0
 
   private def unsignedHelper(i: Int): Short = {
     if (i <= Short.MaxValue.toInt) {
@@ -59,13 +59,13 @@ object IPv6Addr extends TNetworkAddr[IPv6Addr] {
   def apply(v6Addr: String): IPv6Addr = {
     val addr = v6Addr
       .split(':')
-      .map { i => java.lang.Long.parseLong(i, 16) }
+      .map { i => java.lang.Integer.parseInt(i, 16) }
       .map { i =>
         assert(MIN_NUM <= i && i <= MAX_NUM)
-        if (i <= Short.MaxValue.toLong) {
+        if (i <= Short.MaxValue.toInt) {
           i.toShort
         } else {
-          (-(i - Short.MaxValue.toLong)).toShort
+          (-(i - Short.MaxValue.toInt)).toShort
         }
       }
     new IPv6Addr(addr)
