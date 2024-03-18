@@ -51,7 +51,7 @@ class IPv6AddrTester extends AnyFlatSpec {
     assert(ip.toBigInt == BigInt(2))
   }
 
-  it should "be able to return correct BigInt from an IPv4 address when stored as negative" in {
+  it should "be able to return correct BigInt from an IPv6 address when stored as negative" in {
     val ip = IPv6Addr("0000:0000:0000:0000:0000:0000:0000:FFFF")
     assert(ip.toBigInt == BigInt(0xffff))
   }
