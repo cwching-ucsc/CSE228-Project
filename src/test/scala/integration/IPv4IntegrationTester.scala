@@ -27,14 +27,14 @@ import network.{IPv4Addr, IPv4SubnetUtil}
  * Name     IP          MAC
  * Router   172.0.0.5   DB:FE:EB:73:37:1D (WAN1)
  * Router   110.0.0.6   CD:7D:16:A6:9B:66 (WAN2)
- * Switch   192.0.0.1   EF:0B:BD:5E:F4:AA (LAN)
+ * Switch   192.0.0.1   EF:0B:BD:5E:F4:AA (LAN) (Router)
  * Node A   192.0.0.2   6A:47:8B:32:7B:C8
  * Node B   192.0.0.3   26:C5:6D:A8:D4:CE
  * Node C   192.0.0.4   A2:2C:CF:4E:D0:AB
  *
  * Routing table:
  * Port / Index   Content / Target IP
- * 0 (WAN1)       172.XXX.XXX.XXX (172.0.0.0/8)
+ * 0 (WAN1)       172.000.XXX.XXX (172.0.0.0/16)
  * 1 (WAN2)       XXX.XXX.XXX.XXX (0.0.0.0/0) (default route)
  * 2 (LAN)        192.000.000.XXX (192.0.0.0/24)
  *
@@ -84,7 +84,7 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
       tcam.io.in.bits.index.valid.poke(true.B)
       tcam.io.in.bits.index.bits.poke(0.U) // Port 0
       tcam.io.in.bits.content.poke(IPv4("172.0.0.0"))
-      tcam.io.in.bits.mask.poke(IPv4("255.0.0.0", mask = true))
+      tcam.io.in.bits.mask.poke(IPv4("255.255.0.0", mask = true))
       tcam.io.out.valid.expect(true.B)
       tcam.io.out.bits.expect(0.U)
 
@@ -107,14 +107,54 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
       tcam.clock.step()
 
       /**
+       * [Test 1]
        * Node A wants to send a message to 1.2.4.8
-       * Assume ARP cache in Node A contains MAC address of Switch (LAN)
+       * Assume ARP cache in Node A contains MAC address of Router (LAN)
        */
       tcam.io.in.bits.cmds.poke(buildReadCmd())
       tcam.io.in.bits.content.poke(IPv4("1.2.4.8"))
-//      tcam.io.out.valid.expect(true.B)
-      tcam.io.out.bits.expect(1.U) // Port 1
-//      assert(!IPv4SubnetUtil.isInSubnet(IPv4Addr("1.2.4.8"), IPv4Addr("172.0.0.0"), IPv4Addr("255.0.0.0")))
+      tcam.io.out.valid.expect(true.B)
+
+      /**
+       * Assert router should route this message to port 1
+       */
+      tcam.io.out.bits.expect(1.U)
+      assert(!IPv4SubnetUtil.isInSubnet(IPv4Addr("1.2.4.8"), IPv4Addr("172.0.0.0"), IPv4Addr("255.255.0.0")))
+      assert(!IPv4SubnetUtil.isInSubnet(IPv4Addr("1.2.4.8"), IPv4Addr("192.0.0.0"), IPv4Addr("255.255.255.0")))
+
+      tcam.clock.step()
+
+      /**
+       * [Test 2]
+       * Node B wants to send a message to 172.0.1.3
+       * Assume ARP cache in Node B contains MAC address of Router (LAN)
+       */
+      tcam.io.in.bits.cmds.poke(buildReadCmd())
+      tcam.io.in.bits.content.poke(IPv4("172.0.1.3"))
+      tcam.io.out.valid.expect(true.B)
+
+      /**
+       * Assert router should route this message to port 0
+       */
+      tcam.io.out.bits.expect(0.U)
+      assert(IPv4SubnetUtil.isInSubnet(IPv4Addr("172.0.1.3"), IPv4Addr("172.0.0.0"), IPv4Addr("255.255.0.0")))
+
+      tcam.clock.step()
+
+      /**
+       * [Test 3]
+       * Node C wants to send a message to 192.0.0.2
+       * Assume ARP cache in Node C contains MAC address of Router (LAN)
+       */
+      tcam.io.in.bits.cmds.poke(buildReadCmd())
+      tcam.io.in.bits.content.poke(IPv4("192.0.0.2"))
+      tcam.io.out.valid.expect(true.B)
+
+      /**
+       * Assert router should route this message to port 2
+       */
+      tcam.io.out.bits.expect(2.U)
+      assert(IPv4SubnetUtil.isInSubnet(IPv4Addr("192.0.0.2"), IPv4Addr("192.0.0.0"), IPv4Addr("255.255.255.0")))
     }
   }
 }

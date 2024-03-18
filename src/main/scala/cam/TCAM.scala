@@ -93,7 +93,7 @@ class TCAM(p: CAMParams) extends Module {
       }
     }
 
-    minPriorityEncoder(0, p.entries - 1, p.width.U)
+    minPriorityEncoder(0, p.entries - 1, p.width.U + 1.U)
   }
 
   when(io.in.fire) {
