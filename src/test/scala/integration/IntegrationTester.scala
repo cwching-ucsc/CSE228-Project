@@ -6,7 +6,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import cam.{CAM, CAMCmds, CAMParams, TCAM}
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chiseltest.{ChiselScalatestTester, testableBool}
-import network.{IPv4Addr, IPv4SubnetUtil}
+import network.{IPv4Addr, IPv4SubnetUtil, NetworkAddr}
+import org.scalatest.tags.Network
 
 /**
  * Switches are L2 devices (i.e. only look at MAC addresses)
@@ -22,7 +23,7 @@ import network.{IPv4Addr, IPv4SubnetUtil}
  * - Initial MAC lookup table (based on CAM) in Switch is empty
  * - Routing table (based on TCAM) in router is already populated
  * - ARP (Address Resolution Protocol) Cache in Node A is empty when test as a switch, otherwise
- *   populated when test as a router
+ * populated when test as a router
  *
  * Name     IP          MAC               (Port)
  * Router   172.0.0.5   DB:FE:EB:73:37:1D (WAN1)
@@ -42,7 +43,7 @@ import network.{IPv4Addr, IPv4SubnetUtil}
  * - https://www.youtube.com/watch?v=AhOU2eOpmX0
  * - https://www.youtube.com/watch?v=AzXys5kxpAM
  */
-class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
+class IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
   val camParams = CAMParams(4, 48) // MAC lookup table
   val tcamParams = CAMParams(3, 32) // routing table
 
@@ -70,8 +71,8 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
-  behavior of "IPv4IntegrationTester"
-  it should "be able to work as a router" in {
+  behavior of "IntegrationTester"
+  it should "be able to work as a IPv4 router (Level 3)" in {
     test(new TCAM(tcamParams)) { tcam =>
 
       /**
@@ -111,16 +112,17 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
        * Node A wants to send a packet to 1.2.4.8
        * Assume ARP cache in Node A contains MAC address of Router (LAN)
        */
+      val p1 = Packet(IPv4Addr("1.2.4.8"))
       tcam.io.in.bits.cmds.poke(buildReadCmd())
-      tcam.io.in.bits.content.poke(IPv4("1.2.4.8"))
+      tcam.io.in.bits.content.poke(p1.toIP)
       tcam.io.out.valid.expect(true.B)
 
       /**
        * Assert router should route this packet to port 1
        */
       tcam.io.out.bits.expect(1.U)
-      assert(!IPv4SubnetUtil.isInSubnet(IPv4Addr("1.2.4.8"), IPv4Addr("172.0.0.0"), IPv4Addr("255.255.0.0")))
-      assert(!IPv4SubnetUtil.isInSubnet(IPv4Addr("1.2.4.8"), IPv4Addr("192.0.0.0"), IPv4Addr("255.255.255.0")))
+      assert(!IPv4SubnetUtil.isInSubnet(p1.to, IPv4Addr("172.0.0.0"), IPv4Addr("255.255.0.0")))
+      assert(!IPv4SubnetUtil.isInSubnet(p1.to, IPv4Addr("192.0.0.0"), IPv4Addr("255.255.255.0")))
 
       tcam.clock.step()
 
@@ -129,15 +131,16 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
        * Node B wants to send a packet to 172.0.1.3
        * Assume ARP cache in Node B contains MAC address of Router (LAN)
        */
+      val p2 = Packet(IPv4Addr("172.0.1.3"))
       tcam.io.in.bits.cmds.poke(buildReadCmd())
-      tcam.io.in.bits.content.poke(IPv4("172.0.1.3"))
+      tcam.io.in.bits.content.poke(p2.toIP)
       tcam.io.out.valid.expect(true.B)
 
       /**
        * Assert router should route this packet to port 0
        */
       tcam.io.out.bits.expect(0.U)
-      assert(IPv4SubnetUtil.isInSubnet(IPv4Addr("172.0.1.3"), IPv4Addr("172.0.0.0"), IPv4Addr("255.255.0.0")))
+      assert(IPv4SubnetUtil.isInSubnet(p2.to, IPv4Addr("172.0.0.0"), IPv4Addr("255.255.0.0")))
 
       tcam.clock.step()
 
@@ -146,20 +149,22 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
        * Node C wants to send a packet to 192.0.0.2
        * Assume ARP cache in Node C contains MAC address of Router (LAN)
        */
+      val p3 = Packet(IPv4Addr("192.0.0.2"))
       tcam.io.in.bits.cmds.poke(buildReadCmd())
-      tcam.io.in.bits.content.poke(IPv4("192.0.0.2"))
+      tcam.io.in.bits.content.poke(p3.toIP)
       tcam.io.out.valid.expect(true.B)
 
       /**
        * Assert router should route this packet to port 2
        */
       tcam.io.out.bits.expect(2.U)
-      assert(IPv4SubnetUtil.isInSubnet(IPv4Addr("192.0.0.2"), IPv4Addr("192.0.0.0"), IPv4Addr("255.255.255.0")))
+      assert(IPv4SubnetUtil.isInSubnet(p3.to, IPv4Addr("192.0.0.0"), IPv4Addr("255.255.255.0")))
     }
   }
 
-  it should "be able to work as a switch" in {
+  it should "be able to work as a switch (Level 2)" in {
     test(new CAM(camParams)) { cam =>
+
       /**
        * Node A wants to send a dataframe to Node C
        * Assume ARP cache in Node A is empty
@@ -261,4 +266,19 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
   }
 }
 
+/**
+ * Class used to represent a Packet in Level 3
+ *
+ * @param to IP address of sender in `NetworkAddr`
+ */
+case class Packet[T <: NetworkAddr](to: T) {
+  val toIP = to.toBigInt.U
+}
+
+/**
+ * Class used to represent a DataFrame in Level 2
+ *
+ * @param fromMAC MAC address of sender in `Long`
+ * @param toMAC   MAC address of receiver in `Long`
+ */
 case class DataFrame(fromMAC: Long, toMAC: Long)
