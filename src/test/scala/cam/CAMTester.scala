@@ -49,6 +49,7 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "CAM"
   it should "able to write 1 entry into memory" in {
     test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(1.U)
@@ -59,6 +60,7 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to write 2 entries into different slots" in {
     test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(10.U)
@@ -77,6 +79,7 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to write 3 entries into different slots and report full" in {
     test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
 
@@ -106,6 +109,7 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to final available slot to write" in {
     test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(10.U)
@@ -149,6 +153,7 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to write and read 1 entry" in {
     test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(1.U)
@@ -166,6 +171,7 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "report not valid when entry not found in read" in {
     test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(1.U)
@@ -182,6 +188,7 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to delete 1 entry" in {
     test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(1.U)
@@ -199,6 +206,7 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "report not valid when entry not found in delete" in {
     test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildDeleteCmd())
       dut.io.in.bits.content.poke(2.U)
@@ -208,6 +216,7 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to reset all entries" in {
     test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(1.U)
@@ -258,6 +267,7 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "choose first one if multiple matches" in {
     test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(1.U)
@@ -277,6 +287,27 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.in.bits.content.poke(1.U)
       dut.io.out.valid.expect(true.B)
       dut.io.out.bits.expect(0.U)
+    }
+  }
+
+  it should "able to write one entry to preferred index" in {
+    test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.valid.poke(true.B)
+      dut.io.in.bits.index.valid.poke(true.B)
+      dut.io.in.bits.index.bits.poke(1.U)
+      dut.io.in.bits.cmds.poke(buildWriteCmd())
+      dut.io.in.bits.content.poke(10.U)
+
+      outputCheck(dut)
+      dut.io.out.bits.expect(1.U)
+
+      dut.clock.step()
+
+      dut.io.in.bits.index.bits.poke(2.U)
+      dut.io.in.bits.content.poke(20.U)
+
+      outputCheck(dut)
+      dut.io.out.bits.expect(2.U)
     }
   }
 }
