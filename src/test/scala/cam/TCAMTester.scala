@@ -201,6 +201,25 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
+  it should "able to write and read 1 entry when all bits are wildcards" in {
+    test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
+      dut.io.in.valid.poke(true.B)
+      dut.io.in.bits.cmds.poke(buildWriteCmd())
+      dut.io.in.bits.content.poke(0x0.U) // 0000
+      dut.io.in.bits.mask.poke(0xF.U) // 1111
+      outputCheck(dut)
+      dut.io.out.bits.expect(0.U)
+
+      dut.clock.step()
+
+      dut.io.in.bits.cmds.poke(buildReadCmd())
+      dut.io.in.bits.content.poke(0x4.U) // 0100
+      dut.io.out.valid.expect(true.B)
+      dut.io.out.bits.expect(0.U)
+    }
+  }
+
   it should "report not valid when entry not found in read" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
       dut.io.in.bits.index.valid.poke(false.B)

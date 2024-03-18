@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import cam.{CAM, CAMCmds, CAMParams, TCAM}
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chiseltest.{ChiselScalatestTester, testableBool}
-import network.IPv4Addr
+import network.{IPv4Addr, IPv4SubnetUtil}
 
 /**
  * Switches are L2 devices (i.e. only look at MAC addresses)
@@ -21,7 +21,8 @@ import network.IPv4Addr
  * - Node {A, B, C} are all connected to switch
  * - Initial MAC lookup table (based on CAM) in Switch is empty
  * - Routing table (based on TCAM) in router is already populated
- * - ARP (Address Resolution Protocol) Cache in Node A is empty
+ * - ARP (Address Resolution Protocol) Cache in Node A is empty when test as a switch, otherwise
+ *   populated when test as a router
  *
  * Name     IP          MAC
  * Router   172.0.0.5   DB:FE:EB:73:37:1D (WAN1)
@@ -42,7 +43,7 @@ import network.IPv4Addr
  * - https://www.youtube.com/watch?v=AzXys5kxpAM
  */
 class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
-  val camParams = CAMParams(4, 32)  // MAC lookup table
+  val camParams = CAMParams(4, 32) // MAC lookup table
   val tcamParams = CAMParams(3, 32) // routing table
 
   def buildWriteCmd(): CAMCmds = {
@@ -61,9 +62,18 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
       _.reset -> false.B)
   }
 
+  def IPv4(addr: String, mask: Boolean = false): UInt = {
+    if (mask) {
+      (IPv4Addr("255.255.255.255").toBigInt - IPv4Addr(addr).toBigInt).U
+    } else {
+      IPv4Addr(addr).toBigInt.U
+    }
+  }
+
   behavior of "IPv4IntegrationTester"
   it should "be able to work as a router" in {
     test(new TCAM(tcamParams)) { tcam =>
+
       /**
        * Load routing table into TCAM using preferred index mode
        * as the index of the entry stored in TCAM correspond
@@ -73,19 +83,38 @@ class IPv4IntegrationTester extends AnyFlatSpec with ChiselScalatestTester {
       tcam.io.in.bits.cmds.poke(buildWriteCmd())
       tcam.io.in.bits.index.valid.poke(true.B)
       tcam.io.in.bits.index.bits.poke(0.U) // Port 0
-      tcam.io.in.bits.content.poke(IPv4Addr("172.0.0.0").toBigInt.U)
-      tcam.io.in.bits.mask.poke(IPv4Addr("255.0.0.0").toBigInt.U)
+      tcam.io.in.bits.content.poke(IPv4("172.0.0.0"))
+      tcam.io.in.bits.mask.poke(IPv4("255.0.0.0", mask = true))
       tcam.io.out.valid.expect(true.B)
       tcam.io.out.bits.expect(0.U)
 
       tcam.clock.step()
 
       tcam.io.in.bits.index.bits.poke(1.U) // Port 1
-      tcam.io.in.bits.content.poke(IPv4Addr("172.0.0.0").toBigInt.U)
-      tcam.io.in.bits.mask.poke(IPv4Addr("255.0.0.0").toBigInt.U)
+      tcam.io.in.bits.content.poke(IPv4("0.0.0.0"))
+      tcam.io.in.bits.mask.poke(IPv4("0.0.0.0", mask = true))
       tcam.io.out.valid.expect(true.B)
       tcam.io.out.bits.expect(1.U)
-      // Node A wants to send a message to Node B
+
+      tcam.clock.step()
+
+      tcam.io.in.bits.index.bits.poke(2.U) // Port 2
+      tcam.io.in.bits.content.poke(IPv4("192.0.0.0"))
+      tcam.io.in.bits.mask.poke(IPv4("255.255.255.0", mask = true))
+      tcam.io.out.valid.expect(true.B)
+      tcam.io.out.bits.expect(2.U)
+
+      tcam.clock.step()
+
+      /**
+       * Node A wants to send a message to 1.2.4.8
+       * Assume ARP cache in Node A contains MAC address of Switch (LAN)
+       */
+      tcam.io.in.bits.cmds.poke(buildReadCmd())
+      tcam.io.in.bits.content.poke(IPv4("1.2.4.8"))
+//      tcam.io.out.valid.expect(true.B)
+      tcam.io.out.bits.expect(1.U) // Port 1
+//      assert(!IPv4SubnetUtil.isInSubnet(IPv4Addr("1.2.4.8"), IPv4Addr("172.0.0.0"), IPv4Addr("255.0.0.0")))
     }
   }
 }
