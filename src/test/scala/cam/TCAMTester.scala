@@ -49,6 +49,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "TCAM"
   it should "able to write 1 entry into memory" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x1.U) // 0001
@@ -60,6 +61,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to write 2 entries into different slots" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0xA.U) // 1010
@@ -80,6 +82,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to write 3 entries into different slots and report full" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
 
@@ -113,6 +116,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to final available slot to write" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0xA.U) // 1010
@@ -161,6 +165,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to write and read 1 entry" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x5.U) // 0101
@@ -179,6 +184,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to write and read 1 entry using wildcard" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x5.U) // 0101
@@ -197,6 +203,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "report not valid when entry not found in read" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x1.U) // 0001
@@ -214,6 +221,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "report not valid when entry not found in read using wildcard" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x1.U) // 0001
@@ -231,6 +239,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to delete 1 entry" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x1.U) // 0001
@@ -249,6 +258,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to delete 1 entry using wildcard" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x1.U) // 0001
@@ -267,6 +277,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "report not valid when entry not found in delete" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildDeleteCmd())
       dut.io.in.bits.content.poke(2.U)
@@ -276,6 +287,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to reset all entries" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x1.U) // 0001
@@ -329,6 +341,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "able to reset all entries using wildcard" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x1.U) // 0001
@@ -382,6 +395,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "match entry which has least ternary bits (content is different)" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x1.U) // 0001
@@ -408,6 +422,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "match entry which has least ternary bits (content is same)" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x0.U) // 0000
@@ -434,6 +449,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "choose first one if multiple matches (same ternary bit lengths)" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x1.U) // 0001
@@ -460,6 +476,7 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "choose first one if multiple matches (no ternary bits)" in {
     test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(false.B)
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.cmds.poke(buildWriteCmd())
       dut.io.in.bits.content.poke(0x1.U) // 0001
@@ -480,6 +497,29 @@ class TCAMTester extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.in.bits.cmds.poke(buildReadCmd())
       dut.io.in.bits.content.poke(0x1.U) // 0001
       dut.io.out.valid.expect(true.B)
+      dut.io.out.bits.expect(0.U)
+    }
+  }
+
+  it should "able to write two entries according to preferred index" in {
+    test(new TCAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+      dut.io.in.bits.index.valid.poke(true.B)
+      dut.io.in.bits.index.bits.poke(2.U)
+      dut.io.in.valid.poke(true.B)
+      dut.io.in.bits.cmds.poke(buildWriteCmd())
+      dut.io.in.bits.content.poke(0xA.U) // 1010
+      dut.io.in.bits.mask.poke(0x1.U) // 0001
+
+      outputCheck(dut)
+      dut.io.out.bits.expect(2.U)
+
+      dut.clock.step()
+
+      dut.io.in.bits.index.bits.poke(0.U)
+      dut.io.in.bits.content.poke(0xB.U) // 1011
+      dut.io.in.bits.mask.poke(0x2) // 0010
+
+      outputCheck(dut)
       dut.io.out.bits.expect(0.U)
     }
   }

@@ -93,13 +93,11 @@ class CAM(p: CAMParams) extends Module {
           emptyFlags(writeIdx) := false.B
           memory(writeIdx) := io.in.bits.content
           usedCount := usedCount + 1.U
-
           io.out.valid := true.B
-          io.out.bits := writeIdx
         } otherwise {
           io.out.valid := false.B
-          io.out.bits := writeIdx
         }
+        io.out.bits := writeIdx
       }
     }
 

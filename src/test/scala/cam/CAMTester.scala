@@ -290,7 +290,7 @@ class CAMTester extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
-  it should "able to write one entry to preferred index" in {
+  it should "able to write two entries according to preferred index" in {
     test(new CAM(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
       dut.io.in.valid.poke(true.B)
       dut.io.in.bits.index.valid.poke(true.B)
