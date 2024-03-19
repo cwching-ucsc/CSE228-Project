@@ -22,7 +22,7 @@ import dataclass.data
  * @param capacity	Number of bits in CAM
  * @param bitsPerIP	Number of bits per MAC addr in CAM
  */
-case class CAMParams(capacity: Int, bitsPerIP: Int) {
+case class CAMParams_FSM(capacity: Int, bitsPerIP: Int) {
 	require(capacity > bitsPerIP)
 	require(isPow2(capacity) && isPow2(bitsPerIP) && (capacity % bitsPerIP == 0))
 
@@ -33,7 +33,7 @@ case class CAMParams(capacity: Int, bitsPerIP: Int) {
 
 // Refereces: code change from previous homework (CacheModel.scala and MalMulSC.scala)
 
-class FIFOCAMModel(p: CAMParams) extends Module {
+class FIFOCAMModel(p: CAMParams_FSM) extends Module {
 	val io = IO(new Bundle {
 		val in = Flipped(Decoupled(new Bundle {
 			val opCode = Input(UInt(2.W))

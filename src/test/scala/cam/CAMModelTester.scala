@@ -81,7 +81,7 @@ class CAMModelTester extends AnyFlatSpec with ChiselScalatestTester {
 
     behavior of "IP Adding"
     it should "Add four IPs into memory " in {
-      val p = CAMParams(128, 32)
+      val p = CAMParams_FSM(128, 32)
       val randomValues = Seq.fill(4)(Random.nextInt(Int.MaxValue))
       test(new FIFOCAMModel(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         CAMModelTestWrite(dut, randomValues)
@@ -91,7 +91,7 @@ class CAMModelTester extends AnyFlatSpec with ChiselScalatestTester {
     behavior of "IP Adding and lookup"
     it should "Add four IPs into memory " +
       "and look up added four IPs" in {
-      val p = CAMParams(128, 32)
+      val p = CAMParams_FSM(128, 32)
       val randomValues = Seq.fill(4)(Random.nextInt(Int.MaxValue))
       test(new FIFOCAMModel(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         CAMModelTestWrite(dut, randomValues)
@@ -102,7 +102,7 @@ class CAMModelTester extends AnyFlatSpec with ChiselScalatestTester {
     behavior of "IP Adding and single lookup"
     it should "Add four IPs into memory " +
       "and look up the 1st added IP with correct index" in {
-      val p = CAMParams(128, 32)
+      val p = CAMParams_FSM(128, 32)
       val randomValues = Seq.fill(4)(Random.nextInt(Int.MaxValue))
       test(new FIFOCAMModel(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         CAMModelTestWrite(dut, randomValues)
@@ -113,7 +113,7 @@ class CAMModelTester extends AnyFlatSpec with ChiselScalatestTester {
     behavior of "IP Adding and Overriding"
     it should "Add five IPs into memory " +
       "and look up the last added IP with correct index" in {
-      val p = CAMParams(128, 32)
+      val p = CAMParams_FSM(128, 32)
       val randomValues = Seq.fill(4)(Random.nextInt(Int.MaxValue))
       val addRandomValue = Random.nextInt(Int.MaxValue)
       test(new FIFOCAMModel(p)).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
