@@ -33,6 +33,11 @@ case class CAMParams_FSM(capacity: Int, bitsPerIP: Int) {
 
 // Refereces: code change from previous homework (CacheModel.scala and MalMulSC.scala)
 
+/**
+ * Class of CAM model that extends Chisel Module
+ *
+ * @param p	case class of CAMParams_FSM
+ */
 class FIFOCAMModel(p: CAMParams_FSM) extends Module {
 	val io = IO(new Bundle {
 		val in = Flipped(Decoupled(new Bundle {
