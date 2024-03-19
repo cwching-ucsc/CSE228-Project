@@ -17,7 +17,7 @@ import dataclass.data
 
 
 /**
- * Case class designed to encapsulate parameters for CAM
+ * Case class designed to encapsulate parameters for CAM with Finite State Machine
  *
  * @param capacity	Number of bits in CAM
  * @param bitsPerIP	Number of bits per MAC addr in CAM
