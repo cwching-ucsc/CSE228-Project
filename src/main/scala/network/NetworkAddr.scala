@@ -3,13 +3,14 @@ package network
 /**
  * Base class used to represent a network address
  *
- * @param addr Address
+ * @param addr      Address parts in `Seq[Short]`
+ * @param width     Width of whole address
+ * @param separator Separator between address parts
  */
-abstract class NetworkAddr(val addr: Long, val width: Int) {
-  val binaryAddr: Vector[Int]
-
+abstract class NetworkAddr(private val addr: Seq[Short], val width: Int, val separator: String) {
   /**
    * Compare two network addresses and make sure their width and address are equal.
+   *
    * @param obj Other `NetworkAddr`
    */
   override def equals(obj: Any): Boolean = {
@@ -18,116 +19,59 @@ abstract class NetworkAddr(val addr: Long, val width: Int) {
       case _ => false
     }
   }
-}
 
-/**
- * Class used to represent an IPv4 address (32 bits)
- */
-class IPv4Addr(override val addr: Long) extends NetworkAddr(addr, 32) {
   /**
-   * Convert internal addr representation using human readable format
-   * @return Human readable format of IPv4 address in String
-   * @example {{{
-   *            val addr = IPv4Addr("1.2.4.8")
-   *            addr.toString
-   *            > "1.2.4.8"
-   * }}}
+   * Convert address to string based on its width and separator
    */
   override def toString: String = {
-    binaryAddr
-      .grouped(8)
+    addr
       .map { i =>
-        i.reverse
-          .map(i => i.toString.toInt)
-          .zipWithIndex
-          .map { case (n, idx) => math.pow(2, idx).toInt * n }
-          .sum
+        var max = 0
+        val t = i.toString.toInt
+        width match {
+          case 32 => max = Byte.MaxValue.toInt
+          case 128 => max = Short.MaxValue.toInt
+        }
+        if (t < 0) {
+          (-t + max).toString
+        } else {
+          t.toString
+        }
       }
-      .mkString(".")
+      .mkString(separator)
   }
 
   /**
-   * Convert internal addr representation using machine readable format
-   * @return Machine readable format of IPv4 address in Vector[Int]
-   * @example {{{
-   *            val addr = IPv4Addr("1.2.4.8")
-   *            addr.binaryAddr
-   *            > Vector(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0)
-   * }}}
+   * Convert address to BigInt based on its width
    */
-  override val binaryAddr: Vector[Int] = {
-    addr.toBinaryString
-      .reverse
-      .padTo(32, "0")
-      .reverse
-      .map(_.toString.toInt)
-      .toVector
-  }
-}
-
-/**
- * Companion object used to initialize an IPv4 address
- */
-object IPv4Addr {
-  val MAX_NUM = 4294967295L
-  val MIN_NUM = 0L
-  /**
-   * @constructor Use human readable format to create an IPv4Addr class instance
-   * @param v4Addr `String` representation of IPv4 address
-   * @example `IPv4Addr("1.2.4.8")`
-   * @return IPv4Addr class
-   */
-  def apply(v4Addr: String): IPv4Addr = {
-    val addrNum = v4Addr
-      .split('.')
+  def toBigInt: BigInt = {
+    addr
+      .map { i =>
+        var max = 0
+        val t = i.toString.toInt
+        width match {
+          case 32 => max = Byte.MaxValue.toInt
+          case 128 => max = Short.MaxValue.toInt
+        }
+        if (t < 0) {
+          BigInt(-t + max)
+        } else {
+          BigInt(t)
+        }
+      }
       .reverse
       .zipWithIndex
-      .map { case (n, i) => math.pow(256, i).toLong * n.toLong }
+      .map { case (n, i) =>
+        val multiplier = width match {
+          case 32 => BigInt(Byte.MinValue.toInt * -2)
+          case 128 => BigInt(Short.MinValue.toInt * -2)
+        }
+        var base = BigInt(1)
+        (0 until i).foreach { _ =>
+          base = base * multiplier
+        }
+        n * base
+      }
       .sum
-    assert(MIN_NUM <= addrNum && addrNum <= MAX_NUM)
-    new IPv4Addr(addrNum)
-  }
-
-  /**
-   * @constructor Use machine readable format to create an IPv4Addr class instance
-   * @param v4AddrVec `Vector[Int]` representation of IPv4 address (left to right)
-   * @example `IPv4Addr(Vector(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0))`
-   * @return IPv4Addr class
-   */
-  def apply(v4AddrVec: Vector[Int]): IPv4Addr = {
-    val addrNum = v4AddrVec
-      .reverse
-      .zipWithIndex
-      .map { case (n, i) => math.pow(2, i).toLong * n.toLong }
-      .sum
-    assert(MIN_NUM <= addrNum && addrNum <= MAX_NUM)
-    new IPv4Addr(addrNum)
-  }
-
-  /**
-   * @constructor Use machine readable format to create an IPv4Addr class instance
-   * @param addrNum `Long` representation of IPv4 address (left to right)
-   * @example `IPv4Addr(1L)`
-   * @return IPv4Addr class
-   */
-  def apply(addrNum: Long): IPv4Addr = {
-    new IPv4Addr(addrNum)
   }
 }
-
-/**
- * Class used to represent an IPv6 address (128 bits)
- * @todo Implement IPv6Addr
- */
-class IPv6Addr(override val addr: Long) extends NetworkAddr(addr, 128) {
-  override val binaryAddr: Vector[Int] = Vector.empty
-}
-
-// @todo Implement IPv6Addr
-object IPv6Addr {
-  def apply(v6Addr: String): IPv6Addr = {
-    new IPv6Addr(v6Addr.replace(":", "").toInt)
-  }
-}
-
-
