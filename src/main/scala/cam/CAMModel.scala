@@ -34,7 +34,7 @@ case class CAMParams_FSM(capacity: Int, bitsPerIP: Int) {
 // Refereces: code change from previous homework (CacheModel.scala and MalMulSC.scala)
 
 /**
- * Class of CAM model that extends Chisel Module
+ * Class of CAM model that extends Chisel Module. The content in memory follows FIFO order for replacement.
  *
  * @param p	case class of CAMParams_FSM
  */
