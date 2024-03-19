@@ -4,6 +4,24 @@ import chisel3._
 import chisel3.util._
 import dataclass.data
 
+
+/**
+ * This file contains an implementation of CAM (Content Addressable Memory)
+ *
+ * References: The following code are modified from previous homeworks
+ * (XORCipher.scala, Cache.scala, CacheModel.scala and MalMulSC.scala)
+ *
+ * @author Tongze Wang, Cheng-Wei Ching
+ */
+
+
+
+/**
+ * Case class designed to encapsulate parameters for CAM
+ *
+ * @param capacity	Number of bits in CAM
+ * @param bitsPerIP	Number of bits per MAC addr in CAM
+ */
 case class CAMParams(capacity: Int, bitsPerIP: Int) {
 	require(capacity > bitsPerIP)
 	require(isPow2(capacity) && isPow2(bitsPerIP) && (capacity % bitsPerIP == 0))
