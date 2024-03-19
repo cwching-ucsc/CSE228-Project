@@ -7,16 +7,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import chisel3.util.log2Ceil
 import scala.util.Random
 
-
-// case class CAMParams(capacity: Int, bitsPerIP: Int) {
-// 	require(capacity > bitsPerIP)
-// 	require(isPow2(capacity) && isPow2(bitsPerIP) && (capacity % bitsPerIP == 0))
-
-// 	val numIPTag = capacity / bitsPerIP
-// 	val numIPTagBits = log2Ceil(numIPTag)
-// 	val numOffsetBits = log2Ceil(bitsPerIP)
-// }
-
 class CAMModelTester extends AnyFlatSpec with ChiselScalatestTester {
 
     def writeIPIntoMemory(dut: FIFOCAMModel, IP: Int, IPIdx: Int): Unit = {
