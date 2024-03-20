@@ -68,6 +68,7 @@ object IPv6Addr extends TNetworkAddr[IPv6Addr] {
           (-(i - Short.MaxValue.toInt)).toShort
         }
       }
+      .toIndexedSeq
     new IPv6Addr(addr)
   }
 

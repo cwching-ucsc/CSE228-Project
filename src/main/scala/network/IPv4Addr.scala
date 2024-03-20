@@ -44,6 +44,7 @@ object IPv4Addr extends TNetworkAddr[IPv4Addr] {
       addr
         .split('.')
         .map(_.toInt)
+        .toIndexedSeq
         .map { i =>
           assert(MIN_NUM <= i && i <= MAX_NUM)
           unsignedHelper(i)
